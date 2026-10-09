@@ -6,8 +6,10 @@ way to migrate an application from one framework (or major version) to another.
 One generic **migration engine** plus pluggable **migration packs**. Each pack covers exactly one
 `source → target` path; adding a framework means adding a pack, not changing the engine.
 
-> **Status:** the engine and the pilot pack `express-js-to-ts` are complete (milestones M1–M7 of
-> [PLAN.md](PLAN.md)); see the [eval scorecard](evals/scorecard.md). The other packs are planned.
+> **Status:** the engine, the pilot pack `express-js-to-ts` and `express-4-to-5` are complete
+> (milestones M1–M8 of [PLAN.md](PLAN.md), plus the first M9 pack), and the engine has been tried
+> end to end on a real open-source Express app (see [DECISIONS.md](DECISIONS.md) D15–D16). See the
+> [eval scorecard](evals/scorecard.md). The other packs are planned.
 
 ## Install
 
@@ -76,7 +78,7 @@ Tier 1 = automated, 2 = partially automated, 3 = assist mode (inventory, finding
 | Pack | From → To | Tier | Status |
 |---|---|---|---|
 | [`express-js-to-ts`](skills/framework-migration/packs/express-js-to-ts) | Express JS → Express TS | 1 | shipped (pilot) |
-| `express-4-to-5` | Express 4 → 5 | 1 | planned |
+| [`express-4-to-5`](skills/framework-migration/packs/express-4-to-5) | Express 4 → 5 | 1 | shipped |
 | `node-cjs-to-esm` | CommonJS → ESM | 1 | planned |
 | `eslint-flat-config` | legacy `.eslintrc` → flat config | 1 | planned |
 | `react-major-upgrade` | React 17 → 18 → 19 | 1 | planned |

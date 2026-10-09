@@ -155,3 +155,67 @@ with TS7016, each at the major version of the installed package.
 
 Unit tests for 1–3 and the `dotenv` case are in `engine/detect.test.ts`, `engine/pack.test.ts` and
 `evals/packs/express-js-to-ts.test.ts`. The pilot's evals are unchanged at 100%.
+
+## M9 — `express-4-to-5`
+
+### D17. The official codemods run from source at a pinned commit
+The migration guide runs `npx codemod@latest @expressjs/v5-migration-recipe`. Through the registry,
+the recipe resolves each codemod it references to its latest version at run time, so nothing is
+pinned, and the registry (`app.codemod.com`) was not reachable from the build environment.
+`codemods/official-recipe.mjs` uses the repository README's "from source" route instead: it fetches
+`expressjs/codemod` at the commit pinned in `pack.yaml` into a cache, expands the recipe's registry
+references into the local codemods they name, and runs the result with the pinned `codemod` CLI
+(1.18.3). It splits the recipe in two: the API codemods (stage `api-codemods`) and the recipe's
+`package.json` step (stage `upgrade`).
+
+Engine changes this needed: stage commands may use `{pack_dir}`, and a tool may carry `source` (a
+repository URL) and `ref` (a full commit SHA) for tools run from source.
+
+### D18. The runner diffs a scratch copy, because the CLI's dry run prints no diff
+`codemod workflow run --dry-run` reports which steps ran but no changes. PLAN §6 requires a diff
+before apply, so the runner always runs the codemods on a committed scratch copy of the project,
+prints `git diff`, and copies changed files back only without `--dry-run`. The engine stores that
+output in `.fm/diffs/stage-N/`.
+
+### D19. Three official codemods are not run; one official step runs only when needed
+Deviations from the official tool, each because it would change behaviour (PLAN §0.5, §6):
+
+- `static-dotfiles` and `sendfile-options` add `dotfiles: 'allow'`. Measured on Express 4.22.3:
+  the default served `/.well-known/x` but not `/.env`; with `allow`, `/.env` is served. The guide
+  itself recommends mounting only the dot-directory that must be public. The calls are reported
+  (rules `static-dotfiles`, `sendfile-dotfiles`).
+- `route-del-to-delete` renames every `.del(<string>, ...)`, including `cache.del('key')`. Replaced
+  by `route-del.js`, which renames only route registrations.
+- `static-mime`'s `package.json` step adds `mime-types` to every Express project; it runs only when
+  a source file uses `express.static.mime`.
+
+`accepts-plural.js` fills a gap: `pluralize-method-names` only handles zero or one argument.
+
+### D20. Stage order: API codemods and pinned defaults run on Express 4, then the upgrade
+PLAN §5 puts dependencies first. Here every API rewrite and both pinned defaults
+(`app.set('query parser', 'extended')`, `urlencoded({ extended: true })`) are valid on Express 4,
+so they run first and their gates run on Express 4, where the baseline was measured. The upgrade
+stage then changes only the dependency and the route paths (which are not valid on Express 4), and
+its gate is the first on Express 5. A failure there points at the version change, not at a codemod.
+
+### D21. Pinning Express 4 defaults is the pack's choice, reported as such
+Express 5 changed the default query parser and `urlencoded` `extended`. Keeping Express 4's values
+is the only choice that cannot change behaviour, so the pack makes it; the findings table in the
+report lists every place, and dropping the settings is left to the project.
+
+### D22. Evals install each fixture on its own when a pack runs official tools
+A pack that changes a dependency's version cannot share one `node_modules`, and official-tool
+commands must run to be evaluated. When any stage has `commands`, or the fixtures declare
+different versions of a dependency, the evals install each fixture in its own directory (without a
+lockfile) and run every stage command, including `npm install`. This needs network access to npm
+and GitHub. `express-js-to-ts` keeps the shared install. `package-lock.json` is ignored when
+comparing with `after/`.
+
+### D23. "Compiles" for JavaScript packs is the smoke boot
+PLAN §9's first criterion is "compiles / type-checks". A pack without a `typecheck` check (a
+JavaScript-to-JavaScript migration) has nothing to compile, so the evals count the smoke probe
+instead: the migrated app starts and answers HTTP. The scorecard says so.
+
+### D24. `npm run evals -- <pack>` runs any pack and does not rewrite the scorecard
+So a pack can be developed before it is `shipped`, and so a partial run cannot replace the
+committed scorecard, which CI checks is current.
