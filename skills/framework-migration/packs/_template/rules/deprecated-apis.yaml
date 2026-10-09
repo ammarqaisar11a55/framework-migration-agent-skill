@@ -4,6 +4,9 @@
 #                       source file, line by line; add `flags` (i, m, s, u) if needed.
 # matcher.type: ast   — `selector` is an esquery selector run over the file's ESTree AST (JS/TS only).
 # auto_fixable: true only if a codemod in this pack fixes the finding without human judgement.
+# exclude:      optional, top level or per rule — regexes over the project-relative path; matching
+#               files are not scanned. List the files this pack's codemods never touch, so they are
+#               not reported as auto-fixable.
 rules:
   - id: example-deprecated-call
     description: oldApi() was removed in example-framework 2.

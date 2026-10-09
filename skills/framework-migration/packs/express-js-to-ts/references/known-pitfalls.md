@@ -17,12 +17,17 @@ Check by hand:
 - The path still resolves after the build. Directory scans filter on file extensions: in `dist/`
   the files are `.js` again, but any filter written against `.ts` or source paths will break.
 
-## Lazy or conditional `require()` — rule `nested-require` (warn, manual)
+## Lazy, conditional or chained `require()` — rule `nested-require` (warn, manual)
 
 A `require('x')` inside a function or `if` loads `x` only when that code runs. Hoisting it to a
 top-level import changes load order and start-up cost, and can create import cycles that did not
 exist before. It is left unchanged and typed `any`. Convert it by hand to a top-level import if
 eager loading is acceptable, or to `await import('x')` if the function can become `async`.
+
+A top-level `require('dotenv').config()` runs its side effect at that exact point, between the
+imports around it. The codemod leaves it in place, and the CommonJS output under `module: node16`
+keeps statements in source order, so `.config()` still runs before the modules imported after it.
+It compiles as is, because `@types/node` declares `require`.
 
 ## `__dirname` and `__filename` — rule `dirname-usage` (info, manual)
 
@@ -51,6 +56,42 @@ Express 4 does not pass rejected promises to `next`. Adding types does not chang
 codemods must not add `try`/`catch` or a wrapper, because that would change behaviour. If the app
 relies on an `async` handler throwing, record it in the report; the fix belongs to the
 `express-4-to-5` migration or to the app's own error handling.
+
+## Untyped dependencies fail the strictness gate
+
+A package without its own types and without `@types/*` imports as `any` until `strict` turns on
+`noImplicitAny`; then `tsc` reports TS7016 ("Could not find a declaration file for module").
+`cjs-to-esm.js` imports such packages with `import x = require('x')`, which keeps the runtime value
+exact whatever the package's shape. Fix the gate by adding the package's `@types/*` as an exact
+devDependency at the same major version as the installed package (for example `morgan` 1.10 →
+`@types/morgan` 1.9.x), then re-run the check. The import does not need to change: DefinitelyTyped
+types for CommonJS packages use `export =`. If no types exist, add a `declare module 'x';` file and
+list it in the report.
+
+Packages that ship their own types are imported the way those types describe them: `export =` →
+`import x = require()`, a default export → `import x from`, named exports only → `import * as x`.
+
+## Test runners and TypeScript tests
+
+After the rename, the tests are `.ts` files. Neither jest nor mocha runs them without extra setup
+(a transformer or a loader). `add-ts-tooling.js` therefore points the `test` script at the build
+output, as it does for every script that runs source files: `node --test test/*.js` becomes
+`npm run build && node --test dist/test/*.js`, a bare `jest` becomes
+`npm run build && jest --roots dist`, and a bare `mocha` becomes `npm run build && mocha dist/test`.
+It leaves the script alone when the runner has its own configuration (`jest.config.*`,
+`.mocharc.*`, or a `jest` / `mocha` key in `package.json`) and notes that in the stage summary;
+then the agent updates the runner's configuration to the same effect.
+
+The runner's globals (`describe`, `it`, `expect`) need types once the tests are TypeScript: add
+`@types/jest` or `@types/mocha` at the runner's major version and add `"jest"` or `"mocha"` to
+`compilerOptions.types`. The `types` list is explicit because TypeScript 6 defaults it to `[]`.
+
+## Scripts that now run the build output
+
+`start`, `dev` and similar scripts are pointed at `dist/`. `start` is what deployments run after a
+build, so that is the intended change. A watcher such as `nodemon dist/src/index.js` now restarts on
+build output only: the stage notes it, and the project needs `tsc --watch` alongside it (or a
+TypeScript-aware runner, which is a new dependency the user has to approve).
 
 ## Files the pack treats specially
 

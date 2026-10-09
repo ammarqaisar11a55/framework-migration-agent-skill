@@ -5,7 +5,15 @@
   "type": "object",
   "additionalProperties": false,
   "required": ["rules"],
+  "definitions": {
+    "exclude": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Regular expressions matched against the project-relative path (forward slashes). Matching files are not scanned."
+    }
+  },
   "properties": {
+    "exclude": { "$ref": "#/definitions/exclude", "description": "Applies to every rule in the file: files the pack's codemods do not touch." },
     "rules": {
       "type": "array",
       "items": {
@@ -39,6 +47,7 @@
             ]
           },
           "extensions": { "type": "array", "items": { "type": "string", "pattern": "^\\." }, "description": "File extensions the rule applies to. Defaults to the ecosystem's source extensions." },
+          "exclude": { "$ref": "#/definitions/exclude" },
           "severity": { "enum": ["info", "warn", "error"] },
           "auto_fixable": { "type": "boolean" },
           "fix_hint": { "type": "string", "minLength": 1 },

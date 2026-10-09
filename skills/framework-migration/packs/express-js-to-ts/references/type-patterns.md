@@ -81,7 +81,11 @@ item.
 `export =` keeps `module.exports` exactly as it was, which is what ES module default imports and
 dynamic loaders read. Its CommonJS importers then use `import x = require('./x')`.
 
-`import x from 'express'` works for CommonJS packages because `module: node16` implies
+For packages, the codemod reads the declaration file TypeScript would use (the package's own
+types, else `@types/<name>`): `export =` gives `import x = require('x')`, a default export gives
+`import x from 'x'`, named exports only give `import * as x from 'x'`. Untyped packages get
+`import x = require('x')`, and the strictness gate then asks for their `@types` package (see
+`known-pitfalls.md`). Default imports of CommonJS packages work because `module: node16` implies
 `esModuleInterop`.
 
 ## Untyped values under `strict`

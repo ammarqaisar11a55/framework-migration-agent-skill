@@ -60,6 +60,13 @@ describe("matchRules", () => {
 });
 
 describe("detect", () => {
+  it("skips files matched by a rule's exclude patterns", () => {
+    const excluded = rule("cjs", { type: "regex", pattern: "module\\.exports" }, { exclude: ["(^|/)\\.[^/]+$", "\\.config\\.js$"] });
+    expect(where([excluded], ".eslintrc.js", "module.exports = {};")).toEqual([]);
+    expect(where([excluded], "jest.config.js", "module.exports = {};")).toEqual([]);
+    expect(where([excluded], "src/app.js", "module.exports = app;")).toEqual(["cjs@1:1"]);
+  });
+
   it("scans the project, ignores node_modules, sorts findings and matches the schema", () => {
     const root = mkdtempSync(join(tmpdir(), "fm-detect-"));
     try {

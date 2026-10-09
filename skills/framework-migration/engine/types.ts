@@ -66,6 +66,8 @@ export interface Rule {
   description: string;
   matcher: Matcher;
   extensions?: string[];
+  /** Regular expressions over the project-relative path; matching files are skipped. */
+  exclude?: string[];
   severity: Severity;
   auto_fixable: boolean;
   fix_hint: string;

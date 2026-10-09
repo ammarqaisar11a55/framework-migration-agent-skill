@@ -24,7 +24,9 @@ export function loadRules(pack: Pack): Rule[] {
   const file = readYaml(join(pack.dir, "rules", "deprecated-apis.yaml"));
   const errors = validate("rules", file);
   if (errors.length > 0) throw new Error(`Invalid rules file in ${pack.dir}:\n  ${errors.join("\n  ")}`);
-  return (file as { rules: Rule[] }).rules;
+  const { rules, exclude = [] } = file as { rules: Rule[]; exclude?: string[] };
+  // The file-level exclude list applies to every rule.
+  return exclude.length === 0 ? rules : rules.map((rule) => ({ ...rule, exclude: [...exclude, ...(rule.exclude ?? [])] }));
 }
 
 /** Every pack shipped with the skill, excluding the template and directories without a pack.yaml. */
@@ -145,7 +147,23 @@ export function validatePack(dir: string): ValidationResult {
       errors.push(...ruleErrors.map((e) => `rules/deprecated-apis.yaml: ${e}`));
       if (ruleErrors.length === 0) {
         const seen = new Set<string>();
+        const invalidPattern = (pattern: string): string | undefined => {
+          try {
+            new RegExp(pattern);
+            return undefined;
+          } catch (error) {
+            return (error as Error).message;
+          }
+        };
+        for (const pattern of (rules as { exclude?: string[] }).exclude ?? []) {
+          const problem = invalidPattern(pattern);
+          if (problem !== undefined) errors.push(`rules/deprecated-apis.yaml: exclude pattern ${JSON.stringify(pattern)} is not a valid regex (${problem})`);
+        }
         for (const rule of (rules as { rules: Rule[] }).rules) {
+          for (const pattern of rule.exclude ?? []) {
+            const problem = invalidPattern(pattern);
+            if (problem !== undefined) errors.push(`rules/deprecated-apis.yaml: rule "${rule.id}" has an exclude pattern that is not a valid regex (${problem})`);
+          }
           if (seen.has(rule.id)) errors.push(`rules/deprecated-apis.yaml: duplicate rule id "${rule.id}"`);
           seen.add(rule.id);
           if (rule.matcher.type === "regex") {

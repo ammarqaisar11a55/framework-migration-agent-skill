@@ -100,3 +100,58 @@ byte for byte (ignoring `node_modules`, `.fm` and `dist`).
 policy of the build environment. Those pages were checked against their source files in
 `microsoft/TypeScript-Website` and `expressjs/expressjs.com`, which the sites are built from.
 `official-sources.md` records which path was used for each page.
+
+## M7 — SKILL.md, evals and CI
+
+### D13. CI pins actions by commit SHA
+`.github/workflows/evals.yml` uses `actions/checkout` v7.0.1 and `actions/setup-node` v7.1.0, the
+newest tags on 2026-10-09 (both run on `node24`), pinned to their commit SHAs with the tag in a
+comment. Lint, typecheck, unit tests and the build run on Node 20 and 22; the evals run once on
+Node 22, and the job fails if the regenerated `evals/scorecard.md` differs from the committed one.
+
+### D14. The skill calls the engine through npx
+An installed skill directory contains the engine's TypeScript source but no dependencies, so
+SKILL.md runs the published CLI with `npx -p framework-migration-agent-skill fm`, or
+`npm run fm --` from a checkout of this repository.
+
+## M8 — Real-repo trial
+
+### D15. Trial: `w3cj/express-api-starter` at commit `1660e47`
+The current head of that repository has moved to Express 5 and ES modules, outside the pilot's
+`from`; `1660e47` (2024-10-10) is its last Express 4 / CommonJS version: 8 source files,
+helmet, morgan, cors, dotenv, Jest + supertest, 4 tests. It was cloned into a temporary directory
+and not committed. The skill was run as SKILL.md describes, with dry-runs before every apply and a
+commit per stage.
+
+Outcome: all five stages passed their gates (type-check, 4/4 tests, smoke boot) and
+`MIGRATION_REPORT.md` was complete, with rollback commits for every stage and one manual item
+(`require('dotenv').config()`, left in place). No unhandled engine error. The first run stopped at
+the stage 2 gate, as it should have; the fixes below came from it.
+
+Agent work the codemods did not do, as SKILL.md allows: `@types/jest` (prompted by a tooling-stage
+note), and `@types/morgan`, `@types/cors` and `@types/supertest` when the strictness gate failed
+with TS7016, each at the major version of the installed package.
+
+### D16. Lessons and fixes from the trial
+1. **Tool config files were reported as auto-fixable.** `detect` flagged `module.exports` in
+   `.eslintrc.js`, which the codemods deliberately skip, so the finding could never be fixed.
+   Rule files now take an `exclude` list of path regexes (top level, or per rule), validated by
+   `fm validate-pack`; the pilot excludes dotfiles and `*.config.*`, matching `codemods/shared.js`.
+2. **Packages with their own ES-style types broke the type-check.** `cjs-to-esm.js` imported every
+   package except `express` with `import x = require()`. helmet 8 declares `export { helmet as
+   default }`, so the result was "not callable". The codemod now reads the declaration file
+   TypeScript would use (own types, else `@types/*`, looked up through `node_modules` like Node)
+   and follows it; untyped packages keep `import x = require()`. To allow this, codemods receive
+   the absolute project `root` in their context.
+3. **A bare `jest` test script cannot run TypeScript tests.** The tooling stage now points a bare
+   `jest` / `mocha` (no runner config) at the build output, as it already did for scripts that
+   name files, and notes which `@types` package the runner's globals need. A configured runner is
+   left to the agent, with a note.
+4. **Type-only dependencies.** SKILL.md said not to add dependencies; a strict type-check of a
+   real project cannot pass without `@types/*` for untyped packages. The rule now allows exact
+   `@types/*` devDependencies at the described package's major version, listed in the report.
+5. **Smaller:** the `nested-require` hint now covers a call on a top-level `require()`, and the
+   tooling stage notes scripts such as `dev` that now run the build output.
+
+Unit tests for 1–3 and the `dotenv` case are in `engine/detect.test.ts`, `engine/pack.test.ts` and
+`evals/packs/express-js-to-ts.test.ts`. The pilot's evals are unchanged at 100%.

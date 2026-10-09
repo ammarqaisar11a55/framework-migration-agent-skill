@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { run } from "./cli.ts";
-import { parseExpectation, validatePack } from "./pack.ts";
+import { loadPack, loadRules, parseExpectation, validatePack } from "./pack.ts";
 import { packsDir } from "./paths.ts";
 
 const template = join(packsDir(), "_template");
@@ -51,6 +51,14 @@ describe("validate-pack", () => {
     const errors = validatePack(dir).errors.join("\n");
     expect(errors).toContain('missing required property "title"');
     expect(errors).toContain("/tier: must be one of [1,2,3]");
+  });
+
+  it("applies the file-level exclude list to every rule and rejects an invalid pattern", () => {
+    edit("rules/deprecated-apis.yaml", (t) => `exclude: ["\\\\.config\\\\.js$"]\n${t}`);
+    expect(validatePack(dir).errors.filter((e) => e.includes("exclude"))).toEqual([]);
+    for (const rule of loadRules(loadPack(dir))) expect(rule.exclude).toContain("\\.config\\.js$");
+    edit("rules/deprecated-apis.yaml", (t) => t.replace('exclude: ["\\\\.config\\\\.js$"]', 'exclude: ["("]'));
+    expect(validatePack(dir).errors.join("\n")).toContain('exclude pattern "(" is not a valid regex');
   });
 
   it("rejects an id that differs from the directory name", () => {

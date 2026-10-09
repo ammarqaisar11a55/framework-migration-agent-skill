@@ -72,7 +72,9 @@ to the previous stage commit.
 - Leave code that a rule flags with `auto_fixable: false` as it is (dynamic `require`, reflection,
   monkey-patching). Report it; do not rewrite it to satisfy a gate.
 - Do not upgrade, add or remove dependencies beyond what the pack's tooling stage does, unless the
-  user asks.
+  user asks. The exception is type-only packages (`@types/*`) a gate needs, such as types for an
+  untyped dependency or a test runner's globals: add them as exact-version devDependencies at the
+  major version of the installed package they describe, and list them in the report.
 
 ## Pack layout
 
