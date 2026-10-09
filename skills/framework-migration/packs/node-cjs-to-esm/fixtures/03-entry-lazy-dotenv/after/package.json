@@ -1,0 +1,19 @@
+{
+  "name": "fixture-entry-lazy-dotenv",
+  "version": "1.0.0",
+  "private": true,
+  "bin": {
+    "greet": "bin/greet.cjs"
+  },
+  "scripts": {
+    "start": "node bin/greet.cjs",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "dotenv": "16.6.1"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "type": "module"
+}

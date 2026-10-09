@@ -24,7 +24,8 @@ export const packsDir = (): string => join(skillDir(), "packs");
 
 /** Directories never scanned in a target project. */
 export const IGNORED_DIRS = new Set([
-  "node_modules", ".git", ".fm", "dist", "build", "built", "out", "coverage", "vendor", "target", "bin", "obj",
+  // Not "bin": Node packages keep CLI sources there. .NET build output in bin/ holds no source files.
+  "node_modules", ".git", ".fm", "dist", "build", "built", "out", "coverage", "vendor", "target", "obj",
   ".venv", "venv", "__pycache__", ".dart_tool", ".gradle", ".next", ".nuxt", ".svelte-kit",
 ]);
 

@@ -1,0 +1,1 @@
+exports.decorate = (text) => `*** ${text} ***`;

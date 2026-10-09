@@ -7,6 +7,8 @@ export interface StackRef {
   framework: string;
   language?: string;
   versions: string;
+  /** Node packs: the package.json "type" the project must have. */
+  module_type?: "commonjs" | "module";
 }
 
 export interface PackTool {
@@ -72,6 +74,8 @@ export interface Rule {
   extensions?: string[];
   /** Regular expressions over the project-relative path; matching files are skipped. */
   exclude?: string[];
+  /** Node: skip .cjs files and files under a nested package.json with "type": "commonjs". */
+  skip_explicit_commonjs?: boolean;
   severity: Severity;
   auto_fixable: boolean;
   fix_hint: string;

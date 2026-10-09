@@ -1,0 +1,132 @@
+# CommonJS constructs and what becomes of them under "type": "module". Sources:
+# references/official-sources.md. AST selectors are esquery selectors over the ESTree AST.
+
+exclude:
+  - '(^|/)node_modules/'
+
+rules:
+  - id: cjs-require
+    description: "Top-level require() of a literal specifier."
+    matcher:
+      type: ast
+      selector: >-
+        Program > VariableDeclaration > VariableDeclarator > CallExpression.init[callee.name="require"][arguments.0.type="Literal"],
+        Program > ExpressionStatement > CallExpression[callee.name="require"][arguments.0.type="Literal"],
+        Program > ExpressionStatement > CallExpression[callee.property.name="config"][callee.object.callee.name="require"][callee.object.arguments.0.value="dotenv"]:not([arguments.0])
+    skip_explicit_commonjs: true
+    severity: warn
+    auto_fixable: true
+    fix_hint: "Converted by to-esm.js to an import with an explicit file name (JSON with `with { type: 'json' }`; `require('dotenv').config()` → `import 'dotenv/config'`), unless the file has to stay CommonJS (see the stage notes)."
+    docs_url: https://nodejs.org/api/esm.html#import-specifiers
+
+  - id: cjs-exports
+    description: "Assignment to module.exports or to a property of exports."
+    matcher:
+      type: ast
+      selector: >-
+        AssignmentExpression[left.object.name="module"][left.property.name="exports"],
+        AssignmentExpression[left.object.object.name="module"][left.object.property.name="exports"],
+        AssignmentExpression[left.object.name="exports"]
+    skip_explicit_commonjs: true
+    severity: warn
+    auto_fixable: true
+    fix_hint: "Converted by to-esm.js to `export default` (one value) or named exports, unless the file has to stay CommonJS."
+    docs_url: https://nodejs.org/api/esm.html#no-require-exports-or-moduleexports
+
+  - id: dirname-filename
+    description: "__dirname / __filename, which ES modules do not have."
+    matcher:
+      type: ast
+      selector: 'Identifier[name=/^__(dirname|filename)$/]'
+    skip_explicit_commonjs: true
+    severity: warn
+    auto_fixable: true
+    fix_hint: "Replaced by to-esm.js with import.meta.dirname / import.meta.filename (Node.js 20.11+)."
+    docs_url: https://nodejs.org/api/esm.html#no-__filename-or-__dirname
+
+  - id: use-strict
+    description: "A \"use strict\" directive; ES modules are always strict."
+    matcher:
+      type: regex
+      pattern: '^\s*["'']use strict["''];?\s*$'
+    skip_explicit_commonjs: true
+    severity: info
+    auto_fixable: true
+    fix_hint: "Removed by to-esm.js. Check the file for sloppy-mode code (assignments to undeclared variables, `with`), which throws in strict mode."
+    docs_url: https://nodejs.org/api/esm.html#differences-between-es-modules-and-commonjs
+
+  - id: nested-require
+    description: "require() of a literal specifier inside a function or block (lazy or conditional loading)."
+    matcher:
+      type: ast
+      selector: >-
+        CallExpression[callee.name="require"][arguments.0.type="Literal"]:not(Program > VariableDeclaration > VariableDeclarator > .init):not(Program > ExpressionStatement > .expression):not(Program > ExpressionStatement > CallExpression > MemberExpression.callee > .object)
+    severity: warn
+    auto_fixable: false
+    fix_hint: "Left as a require() call, backed by `createRequire(import.meta.url)`, so it loads at the same moment as before; the required module stays CommonJS. Convert it to `await import()` by hand if the function can become async."
+    docs_url: https://nodejs.org/api/module.html#modulecreaterequirefilename
+
+  - id: dynamic-require
+    description: "require() with a computed path."
+    matcher:
+      type: ast
+      selector: 'CallExpression[callee.name="require"]:not([arguments.0.type="Literal"])'
+    severity: error
+    auto_fixable: false
+    fix_hint: "Left unchanged. When the path starts from __dirname or a literal directory, that directory stays CommonJS (its own package.json with \"type\":\"commonjs\"); otherwise the file stays CommonJS as .cjs. Check what the call can load."
+    docs_url: https://nodejs.org/api/packages.html#type
+
+  - id: require-main
+    description: "require.main, require.cache or require.extensions, which ES modules do not have."
+    matcher:
+      type: ast
+      selector: 'MemberExpression[object.name="require"][property.name=/^(main|cache|extensions)$/]'
+    severity: error
+    auto_fixable: false
+    fix_hint: "The file stays CommonJS (.cjs). `require.main === module` maps to `import.meta.main` (Node.js 22.18+ and 24.2+, still marked early development); cache and extensions have no ES module equivalent."
+    docs_url: https://nodejs.org/api/esm.html#no-requiremain
+
+  - id: module-object
+    description: "The CommonJS module object used for something other than module.exports."
+    matcher:
+      type: ast
+      selector: 'MemberExpression[object.name="module"]:not([property.name="exports"])'
+    severity: error
+    auto_fixable: false
+    fix_hint: "The file stays CommonJS (.cjs). There is no module object in ES modules."
+    docs_url: https://nodejs.org/api/esm.html#no-require-exports-or-moduleexports
+
+  - id: import-hoisting
+    description: "A top-level side effect (process.env or global assignment, a .config() call, a call on a require() result). ES modules run all imports before the module body."
+    matcher:
+      type: ast
+      selector: >-
+        Program > ExpressionStatement[expression.type="AssignmentExpression"][expression.left.object.object.name="process"][expression.left.object.property.name="env"],
+        Program > ExpressionStatement[expression.type="AssignmentExpression"][expression.left.object.name=/^(global|globalThis)$/],
+        Program > ExpressionStatement[expression.type="CallExpression"][expression.callee.property.name="config"]:not([expression.callee.object.callee.name="require"][expression.callee.object.arguments.0.value="dotenv"]:not([expression.arguments.0])),
+        Program > ExpressionStatement[expression.type="CallExpression"][expression.callee.object.callee.name="require"]:not([expression.callee.property.name="config"])
+    severity: warn
+    auto_fixable: false
+    fix_hint: "If a require() follows it, the file stays CommonJS (.cjs), because converting would load the later modules before this statement runs. To convert by hand, move the side effect into its own module and import that module first."
+    docs_url: https://nodejs.org/api/esm.html#import-specifiers
+
+  - id: top-level-this
+    description: "`this` at the top level of a module (module.exports in CommonJS, undefined in ES modules)."
+    matcher:
+      type: ast
+      selector: 'Program > ExpressionStatement ThisExpression:not(:function ThisExpression):not(ClassBody ThisExpression)'
+    severity: error
+    auto_fixable: false
+    fix_hint: "The file stays CommonJS (.cjs). Replace `this` with the exported object to convert it."
+    docs_url: https://nodejs.org/api/esm.html#differences-between-es-modules-and-commonjs
+
+  - id: jest-runner
+    description: "Jest runs ES modules only with --experimental-vm-modules."
+    matcher:
+      type: regex
+      pattern: '"test"\s*:\s*"[^"]*\bjest\b'
+    extensions: [".json"]
+    severity: warn
+    auto_fixable: false
+    fix_hint: "Run jest as `node --experimental-vm-modules node_modules/jest/bin/jest.js`, or migrate the tests (jest-to-vitest)."
+    docs_url: https://nodejs.org/api/esm.html#enabling

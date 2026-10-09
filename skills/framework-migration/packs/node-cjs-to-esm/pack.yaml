@@ -1,0 +1,23 @@
+id: node-cjs-to-esm
+title: Node.js CommonJS → ES modules
+ecosystem: node
+tier: 1
+status: shipped
+
+from: { framework: node, versions: "*", module_type: commonjs }
+to:   { framework: node, versions: ">=20.19.0", module_type: module }
+
+tools:
+  - { name: jscodeshift, version: "17.4.0", role: engine }
+
+stages:
+  - id: engines
+    title: Require Node.js 20.19 or newer (import.meta.dirname, JSON modules, require of ES modules)
+    codemods: [set-engines.js]
+  - id: esm
+    title: Switch the package to "type":"module" and convert each file that converts exactly; keep the rest CommonJS
+    codemods: [to-esm.js]
+    fix_rules: true
+
+checks:
+  test: "npm test"

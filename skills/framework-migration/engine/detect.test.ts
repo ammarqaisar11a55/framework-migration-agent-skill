@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { detect, matchRules } from "./detect.ts";
+import { detect, isExplicitCommonJs, matchRules } from "./detect.ts";
 import { validate } from "./schema.ts";
 import type { Pack, Rule } from "./types.ts";
 
@@ -79,6 +79,27 @@ describe("detect", () => {
       const result = detect(root, pack, [rule("dyn", { type: "regex", pattern: "require\\(\\w\\)" })]);
       expect(result.findings.map((f) => `${f.file}:${f.line}`)).toEqual(["src/a.js:2", "src/b.js:1"]);
       expect(validate("findings", result)).toEqual([]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("isExplicitCommonJs", () => {
+  it("is true for .cjs files and below a nested package.json with type commonjs, not for the root one", () => {
+    const root = mkdtempSync(join(tmpdir(), "fm-cjs-"));
+    try {
+      mkdirSync(join(root, "src/plugins"), { recursive: true });
+      writeFileSync(join(root, "package.json"), '{ "type": "commonjs" }');
+      writeFileSync(join(root, "src/plugins/package.json"), '{ "type": "commonjs" }');
+      expect(isExplicitCommonJs(root, "src/app.js")).toBe(false);
+      expect(isExplicitCommonJs(root, "src/boot.cjs")).toBe(true);
+      expect(isExplicitCommonJs(root, "src/plugins/shout.js")).toBe(true);
+      const rules = [rule("cjs", { type: "regex", pattern: "require" }, { skip_explicit_commonjs: true }), rule("dyn", { type: "regex", pattern: "require" })];
+      writeFileSync(join(root, "src/plugins/shout.js"), "require(x);\n");
+      writeFileSync(join(root, "src/app.js"), "require(x);\n");
+      const pack = { id: "p", ecosystem: "node" } as Pack;
+      expect(detect(root, pack, rules).findings.map((f) => `${f.rule} ${f.file}`)).toEqual(["cjs src/app.js", "dyn src/app.js", "dyn src/plugins/shout.js"]);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

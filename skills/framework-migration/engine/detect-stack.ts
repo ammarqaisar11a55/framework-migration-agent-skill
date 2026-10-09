@@ -43,6 +43,7 @@ export function matchPacks(stacks: readonly Stack[], packs: readonly Pack[]): Pa
     for (const stack of stacks) {
       if (stack.ecosystem !== pack.ecosystem) continue;
       if (pack.from.language !== undefined && pack.from.language !== stack.language) continue;
+      if (pack.from.module_type !== undefined && pack.from.module_type !== stack.moduleType) continue;
       const framework = stack.frameworks.find((f) => f.name === pack.from.framework);
       if (framework === undefined) continue;
       const verdict = versionMatches(framework.version, pack.from.versions);

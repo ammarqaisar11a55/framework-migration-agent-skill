@@ -48,6 +48,7 @@
           },
           "extensions": { "type": "array", "items": { "type": "string", "pattern": "^\\." }, "description": "File extensions the rule applies to. Defaults to the ecosystem's source extensions." },
           "exclude": { "$ref": "#/definitions/exclude" },
+          "skip_explicit_commonjs": { "type": "boolean", "description": "Node: skip .cjs files and files under a nested package.json (below the project root) with \"type\": \"commonjs\" — code a migration deliberately keeps CommonJS." },
           "severity": { "enum": ["info", "warn", "error"] },
           "auto_fixable": { "type": "boolean" },
           "fix_hint": { "type": "string", "minLength": 1 },

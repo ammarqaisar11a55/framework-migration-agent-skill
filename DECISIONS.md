@@ -219,3 +219,43 @@ instead: the migrated app starts and answers HTTP. The scorecard says so.
 ### D24. `npm run evals -- <pack>` runs any pack and does not rewrite the scorecard
 So a pack can be developed before it is `shipped`, and so a partial run cannot replace the
 committed scorecard, which CI checks is current.
+
+## M9 — `node-cjs-to-esm`
+
+### D25. A Node project matches through a `node` entry and `from.module_type`
+The CommonJS → ESM migration has no framework to match on. The node adapter now reports the
+runtime as a framework entry (`node`, version from `engines.node` or `*`), and a pack's `from` may
+set `module_type` (`commonjs` / `module`), compared with the package.json `"type"`.
+
+### D26. Convert only what converts exactly; keep the rest CommonJS, visibly
+PLAN §6 forbids behaviour changes, and several CommonJS constructs have no exact ES module form
+(import hoisting, `require.main`, `require.cache`, `module.*`, top-level `this`, computed `require()`
+of an unknown directory). Rather than stop the migration, `to-esm.js` keeps those files CommonJS by
+renaming them `.cjs`, keeps directories loaded by computed `require()` CommonJS in place with a
+nested `package.json {"type":"commonjs"}` (Node's nearest-package.json rule), and lists every such
+file with its reason in the stage notes. Modules that export a single value and are still loaded
+with `require()` stay CommonJS too, because `require(esm)` returns a namespace.
+
+### D27. `engines.node` becomes `>=20.19.0`
+The output uses `import.meta.dirname` (20.11), JSON modules without a warning (20.18.3), and relies
+on `require()` of ES modules without a flag (20.19.0) for files kept CommonJS. The first stage
+raises `engines.node` on its own, so its gate still runs on the CommonJS code.
+
+### D28. Rules skip code that is explicitly CommonJS after the migration
+`cjs-require`, `cjs-exports`, `dirname-filename` and `use-strict` would otherwise report every file
+the pack deliberately kept CommonJS as "auto-fixable and not fixed". A rule may set
+`skip_explicit_commonjs: true`: `.cjs` files and files below a nested package.json with
+`"type": "commonjs"` are skipped (the root package.json does not count, so the whole project is
+still scanned before the migration). The manual rules that explain why a file stayed CommonJS keep
+reporting it.
+
+### D29. `bin/` is scanned
+The project walker skipped every `bin/` directory, meant for .NET build output. Node packages keep
+their CLI sources there, so the first node-cjs-to-esm fixture's CLI was invisible to the inventory.
+`bin` is no longer ignored; .NET build output in `bin/` has no source files the inventory would pick
+up. (`obj/` is still ignored.)
+
+### D30. "Compiles" falls back to the test run
+A library pack has neither a type-check nor a smoke probe. For it, the evals count the test run:
+an ES module graph links (syntax, specifiers, imported names) before any test runs, so passing tests
+prove the migrated modules load. The order is typecheck, then smoke, then test.
