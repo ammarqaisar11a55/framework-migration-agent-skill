@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -104,5 +105,16 @@ describe("parseExpectation", () => {
 
   it("rejects a report without frontmatter", () => {
     expect(() => parseExpectation("# just prose\n")).toThrow("no YAML frontmatter");
+  });
+});
+
+describe("fixtures in git", () => {
+  // A fixture's own .gitignore (one that tests ignore handling) also applies to this repository, so
+  // files it lists are silently left out of commits unless force-added.
+  it("has no fixture file that git ignores and does not track", () => {
+    const ignored = execFileSync("git", ["ls-files", "--others", "--ignored", "--exclude-standard", "--", "skills/framework-migration/packs"], { encoding: "utf8" })
+      .split("\n")
+      .filter((path) => path.includes("/fixtures/") && !path.includes("/node_modules/"));
+    expect(ignored).toEqual([]);
   });
 });
