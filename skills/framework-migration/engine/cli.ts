@@ -2,7 +2,12 @@
 import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { validatePack } from "./pack.ts";
+import { resolve } from "node:path";
+import { artifactPath, writeJson } from "./artifacts.ts";
+import { detectStack, matchPacks } from "./detect-stack.ts";
+import { buildInventory } from "./inventory.ts";
+import { listPacks, validatePack } from "./pack.ts";
+import { validate } from "./schema.ts";
 
 export interface CliResult {
   exitCode: number;
@@ -38,10 +43,42 @@ const validatePackCommand: Handler = ({ positionals }) => {
   return ok([`Pack at ${dir} is valid.`, ...lines].join("\n"));
 };
 
+const detectStackCommand: Handler = ({ positionals }) => {
+  const stacks = detectStack(resolve(positionals[0] ?? "."));
+  const packs = matchPacks(stacks, listPacks()).map((m) => ({
+    id: m.pack.id,
+    title: m.pack.title,
+    tier: m.pack.tier,
+    status: m.pack.status,
+    versionVerified: m.versionVerified,
+  }));
+  return ok(JSON.stringify({ stacks, packs }, null, 2));
+};
+
+const inventoryCommand: Handler = ({ positionals, values }) => {
+  const root = resolve(positionals[0] ?? ".");
+  const inventory = buildInventory(root);
+  const errors = validate("inventory", inventory);
+  if (errors.length > 0) return fail(`fm inventory: produced an invalid inventory:\n  ${errors.join("\n  ")}`);
+  const out = typeof values["out"] === "string" ? resolve(values["out"]) : artifactPath(root, "inventory.json");
+  writeJson(out, inventory);
+  const risky = inventory.files.filter((f) => f.risk.level === "high");
+  return ok(
+    [
+      `Wrote ${out}`,
+      `Stacks: ${inventory.stacks.map((s) => `${s.ecosystem}/${s.language}`).join(", ") || "none detected"}`,
+      `Source files: ${inventory.files.length}`,
+      `Entry points: ${inventory.entryPoints.join(", ") || "none found"}`,
+      `High-risk files: ${risky.length}`,
+      ...risky.map((f) => `  ${f.path} — ${f.risk.reasons.join("; ")}`),
+    ].join("\n"),
+  );
+};
+
 export const COMMANDS: readonly Command[] = [
   { name: "validate-pack", usage: "validate-pack <path>", summary: "Validate a pack directory against the schemas", milestone: "M2", handler: validatePackCommand },
-  { name: "detect-stack", usage: "detect-stack [dir]", summary: "Detect language, framework and version from manifests", milestone: "M3" },
-  { name: "inventory", usage: "inventory [dir]", summary: "Build inventory.json (files, dependency graph, entry points, risk)", milestone: "M3" },
+  { name: "detect-stack", usage: "detect-stack [dir]", summary: "Detect language, framework and version from manifests", milestone: "M3", handler: detectStackCommand },
+  { name: "inventory", usage: "inventory [dir] [--out <file>]", summary: "Build inventory.json (files, dependency graph, entry points, risk)", milestone: "M3", handler: inventoryCommand },
   { name: "detect", usage: "detect --pack <id> [dir]", summary: "Run a pack's rules and write findings.json", milestone: "M4" },
   { name: "run-codemod", usage: "run-codemod --pack <id> --stage <id> (--dry-run | --apply) [dir]", summary: "Run a stage's codemods; dry-run writes patches", milestone: "M4" },
   { name: "check", usage: "check --pack <id> --stage <n> [dir]", summary: "Run a pack's compatibility checks against the baseline", milestone: "M5" },
