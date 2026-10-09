@@ -48,7 +48,14 @@ One commit per stage. Each stage commit's subject must be exactly
 
 Packs map their stages onto the same generic phases: tooling and shims first (the app must still
 boot), then official tool and pack codemods (leaf → root, the engine orders files from the
-dependency graph), then rule-driven fixes, then hardening (remove shims, enable strict modes).
+dependency graph), then rule-driven fixes, then hardening (remove shims, enable strict modes). The
+exact order is the pack's: `express-4-to-5`, for example, applies every change that still runs on
+Express 4 before it upgrades, so the first gate on Express 5 tests only the upgrade.
+
+A stage that runs an official tool lists it under `commands` in `pack.yaml`. Its dry-run output
+(the tool's diff) is in `.fm/diffs/stage-<n>/command-before-*.txt`, next to the pack codemods'
+`.patch` files; read both. Such stages fetch the pinned tool from npm or GitHub, so they need
+network access.
 
 ### When a gate fails
 
