@@ -13,6 +13,10 @@ export interface PackTool {
   name: string;
   version: string;
   role?: "dependency" | "devDependency" | "engine";
+  /** Repository a tool run from source is fetched from. */
+  source?: string;
+  /** Commit of `source` the pack was verified with. */
+  ref?: string;
 }
 
 export type StageCommand = string | { run: string; dry_run: string };

@@ -79,6 +79,16 @@
             "pattern": "^v?[0-9]+\\.[0-9]+(\\.[0-9]+)?([+-][0-9A-Za-z.+-]+)?$",
             "description": "Exact version. Ranges (^, ~, x, >=) and placeholders are rejected."
           },
+          "source": {
+            "type": "string",
+            "pattern": "^https://",
+            "description": "Repository the tool is fetched from, for tools run from source rather than installed from a registry."
+          },
+          "ref": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{40}$",
+            "description": "Full commit SHA of `source` the pack was verified with."
+          },
           "role": {
             "enum": [
               "dependency",
@@ -119,7 +129,7 @@
             "items": {
               "$ref": "#/definitions/command"
             },
-            "description": "Run before the stage's codemods: the official migration tool goes here."
+            "description": "Run before the stage's codemods: the official migration tool goes here. `{pack_dir}` is replaced with the pack's directory."
           },
           "fix_rules": {
             "type": "boolean",

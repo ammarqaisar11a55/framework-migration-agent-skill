@@ -213,6 +213,9 @@ async function runOne(name: string, mod: CodemodModule, overlay: Overlay, pack: 
 const commandText = (command: StageCommand, dryRun: boolean): string | undefined =>
   typeof command === "string" ? (dryRun ? undefined : command) : dryRun ? command.dry_run : command.run;
 
+/** `{pack_dir}` in a stage command is the pack's absolute directory, quoted for the shell. */
+export const expandCommand = (text: string, pack: Pack): string => text.replaceAll("{pack_dir}", `'${pack.dir.replaceAll("'", "'\\''")}'`);
+
 export interface RunStageOptions {
   apply?: boolean;
   /** Do not run the stage's commands / post_commands (the caller handles them). */
@@ -245,8 +248,9 @@ export async function runStage(rootDir: string, pack: Pack, stageId: string, opt
 
   const runCommands = (commands: readonly StageCommand[], phase: "before" | "after"): boolean => {
     for (const [index, command] of commands.entries()) {
-      const text = commandText(command, !apply);
-      const label = typeof command === "string" ? command : command.run;
+      const raw = commandText(command, !apply);
+      const text = raw === undefined ? undefined : expandCommand(raw, pack);
+      const label = expandCommand(typeof command === "string" ? command : command.run, pack);
       if (text === undefined || options.skipCommands === true) {
         result.commands.push({ command: label, phase, status: "skipped", output: "" });
         continue;
