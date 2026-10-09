@@ -1,0 +1,14 @@
+# Rules that detect deprecated or migration-relevant APIs. Validated by schemas/rules.schema.json.
+#
+# matcher.type: regex — `pattern` (JavaScript regex source) is matched against every
+#                       source file, line by line; add `flags` (i, m, s, u) if needed.
+# matcher.type: ast   — `selector` is an esquery selector run over the file's ESTree AST (JS/TS only).
+# auto_fixable: true only if a codemod in this pack fixes the finding without human judgement.
+rules:
+  - id: example-deprecated-call
+    description: oldApi() was removed in example-framework 2.
+    matcher: { type: ast, selector: 'CallExpression[callee.name="oldApi"]' }
+    severity: error                # info | warn | error
+    auto_fixable: true
+    fix_hint: Replace oldApi() with newApi().
+    docs_url: https://example.com/migration-guide#old-api

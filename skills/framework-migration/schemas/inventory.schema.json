@@ -1,6 +1,75 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/ammarqaisar11a55/framework-migration-agent-skill/schemas/inventory.schema.json",
-  "title": "inventory",
-  "description": "Placeholder — defined in M2 (see PLAN.md §8)."
+  "title": "Migration inventory (inventory.json)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["root", "stacks", "files", "entryPoints", "order"],
+  "properties": {
+    "root": { "type": "string" },
+    "stacks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ecosystem", "manifest", "language", "frameworks"],
+        "properties": {
+          "ecosystem": { "enum": ["node", "python", "jvm", "dotnet", "php", "ruby", "dart", "go"] },
+          "manifest": { "type": "string" },
+          "language": { "type": "string" },
+          "runtime": { "type": "string" },
+          "moduleType": { "enum": ["commonjs", "module"] },
+          "frameworks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["name", "version"],
+              "properties": { "name": { "type": "string" }, "version": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "language", "loc", "imports", "importedBy", "risk"],
+        "properties": {
+          "path": { "type": "string" },
+          "language": { "type": "string" },
+          "format": { "enum": ["cjs", "esm"] },
+          "loc": { "type": "integer", "minimum": 0 },
+          "imports": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["specifier", "kind"],
+              "properties": {
+                "specifier": { "type": "string" },
+                "kind": { "enum": ["require", "import", "dynamic-import", "export-from"] },
+                "resolved": { "type": "string", "description": "Project-relative path when the specifier is a local file." }
+              }
+            }
+          },
+          "importedBy": { "type": "array", "items": { "type": "string" } },
+          "risk": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["score", "level", "reasons"],
+            "properties": {
+              "score": { "type": "integer", "minimum": 0 },
+              "level": { "enum": ["low", "medium", "high"] },
+              "reasons": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "entryPoints": { "type": "array", "items": { "type": "string" } },
+    "order": { "type": "array", "items": { "type": "string" }, "description": "Files in leaf-to-root order: a file appears after the local files it imports." }
+  }
 }

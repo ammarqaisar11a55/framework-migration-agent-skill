@@ -1,6 +1,69 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/ammarqaisar11a55/framework-migration-agent-skill/schemas/pack.schema.json",
-  "title": "pack",
-  "description": "Placeholder — defined in M2 (see PLAN.md §8)."
+  "title": "Migration pack manifest (pack.yaml)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "title", "ecosystem", "tier", "status", "from", "to", "tools", "stages", "checks"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "description": "Must equal the pack directory name." },
+    "title": { "type": "string", "minLength": 1 },
+    "ecosystem": { "enum": ["node", "python", "jvm", "dotnet", "php", "ruby", "dart", "go"] },
+    "tier": { "enum": [1, 2, 3], "description": "1 = automate, 2 = partial, 3 = assist mode." },
+    "status": { "enum": ["planned", "in progress", "shipped"], "description": "Shipped packs must have at least 3 positive and 1 negative fixture." },
+    "from": { "$ref": "#/definitions/stack" },
+    "to": { "$ref": "#/definitions/stack" },
+    "tools": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "version"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "version": { "type": "string", "pattern": "^v?[0-9]+\\.[0-9]+(\\.[0-9]+)?([+-][0-9A-Za-z.+-]+)?$", "description": "Exact version. Ranges (^, ~, x, >=) and placeholders are rejected." },
+          "role": { "enum": ["dependency", "devDependency", "engine"], "description": "dependency/devDependency tools are added to the target project; engine tools are used by the pack's codemods." }
+        }
+      }
+    },
+    "stages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+          "title": { "type": "string" },
+          "codemods": { "type": "array", "items": { "type": "string" }, "description": "File names in codemods/, run in order." },
+          "commands": { "type": "array", "items": { "type": "string" }, "description": "Shell commands run after the codemods are applied (e.g. the official upgrade tool, or a dependency install)." },
+          "fix_rules": { "type": "boolean", "description": "Stage addresses auto_fixable findings." }
+        }
+      }
+    },
+    "checks": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "typecheck": { "type": "string" },
+        "test": { "type": "string" },
+        "lint": { "type": "string" },
+        "smoke": { "type": "string" }
+      }
+    }
+  },
+  "definitions": {
+    "stack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["framework", "versions"],
+      "properties": {
+        "framework": { "type": "string", "minLength": 1 },
+        "language": { "type": "string", "minLength": 1 },
+        "versions": { "type": "string", "minLength": 1, "description": "semver range, e.g. \"4.x\"." }
+      }
+    }
+  }
 }

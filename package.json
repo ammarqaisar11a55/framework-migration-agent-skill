@@ -2,7 +2,13 @@
   "name": "framework-migration-agent-skill",
   "version": "0.1.0",
   "description": "Agent Skill: a generic migration engine plus pluggable packs for migrating apps between frameworks and major versions.",
-  "keywords": ["agent-skill", "claude", "migration", "codemod", "framework-migration"],
+  "keywords": [
+    "agent-skill",
+    "claude",
+    "migration",
+    "codemod",
+    "framework-migration"
+  ],
   "license": "MIT",
   "author": "Muhammad Ammar Qaisar",
   "repository": {
@@ -41,12 +47,25 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@types/esquery": "1.5.4",
+    "@types/jscodeshift": "17.3.0",
     "@types/node": "20.19.43",
+    "@types/semver": "7.8.0",
     "eslint": "10.12.0",
     "globals": "17.13.0",
     "tsx": "4.23.15",
     "typescript": "6.0.3",
     "typescript-eslint": "8.71.1",
     "vitest": "4.1.11"
+  },
+  "dependencies": {
+    "@babel/parser": "7.29.9",
+    "ajv": "8.20.0",
+    "diff": "9.0.0",
+    "esquery": "1.7.0",
+    "jscodeshift": "17.4.0",
+    "semver": "7.8.5",
+    "smol-toml": "1.9.1",
+    "yaml": "2.9.1"
   }
 }

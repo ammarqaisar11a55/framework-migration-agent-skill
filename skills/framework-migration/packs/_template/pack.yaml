@@ -1,0 +1,33 @@
+# Copy this directory to packs/<your-pack-id>/ and edit every field.
+# Validate with: fm validate-pack skills/framework-migration/packs/<your-pack-id>
+
+id: template-pack                 # must equal the directory name
+title: Source framework → Target framework
+ecosystem: node                   # node | python | jvm | dotnet | php | ruby | dart | go
+tier: 1                           # 1 = automate, 2 = partial, 3 = assist mode (inventory, findings, roadmap)
+status: planned                   # planned | in progress | shipped (shipped needs 3 positive + 1 negative fixture)
+
+# A project matches this pack when detect-stack finds `framework` at a version inside `versions`
+# (a semver range) and, if `language` is given, the same language.
+from: { framework: example-framework, language: javascript, versions: "1.x" }
+to:   { framework: example-framework, language: javascript, versions: "2.x" }
+
+# Every external tool the pack depends on, at an exact version (no ^, ~, x or ranges).
+# role: devDependency / dependency = added to the migrated project; engine = used by the codemods.
+tools:
+  - { name: example-tool, version: "1.0.0", role: devDependency }
+
+# Stages run in order; each one is committed separately so it is a rollback point.
+# codemods: files in codemods/, run leaf → root over the dependency graph, always dry-run first.
+# commands: shell commands run after the stage's codemods are applied (official upgrade tool first).
+stages:
+  - id: tooling
+    title: Upgrade packages and config, enable compatibility shims
+    codemods: [example-codemod.js]
+  - id: rule-fixes
+    title: Fix auto_fixable findings
+    fix_rules: true
+
+# Gate commands, run after every stage and compared with the stage 0 baseline.
+checks:
+  test: "npm test"

@@ -1,6 +1,50 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/ammarqaisar11a55/framework-migration-agent-skill/schemas/rules.schema.json",
-  "title": "rules",
-  "description": "Placeholder — defined in M2 (see PLAN.md §8)."
+  "title": "Deprecated-API rule file (rules/deprecated-apis.yaml)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["rules"],
+  "properties": {
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "description", "matcher", "severity", "auto_fixable", "fix_hint", "docs_url"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+          "description": { "type": "string", "minLength": 1 },
+          "matcher": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["type", "pattern"],
+                "properties": {
+                  "type": { "const": "regex" },
+                  "pattern": { "type": "string", "minLength": 1 },
+                  "flags": { "type": "string", "pattern": "^[imsu]*$" }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["type", "selector"],
+                "properties": {
+                  "type": { "const": "ast" },
+                  "selector": { "type": "string", "minLength": 1, "description": "esquery selector over the ESTree AST (JS/TS only)." }
+                }
+              }
+            ]
+          },
+          "extensions": { "type": "array", "items": { "type": "string", "pattern": "^\\." }, "description": "File extensions the rule applies to. Defaults to the ecosystem's source extensions." },
+          "severity": { "enum": ["info", "warn", "error"] },
+          "auto_fixable": { "type": "boolean" },
+          "fix_hint": { "type": "string", "minLength": 1 },
+          "docs_url": { "type": "string", "pattern": "^https://" }
+        }
+      }
+    }
+  }
 }

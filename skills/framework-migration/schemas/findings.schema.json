@@ -1,6 +1,30 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/ammarqaisar11a55/framework-migration-agent-skill/schemas/findings.schema.json",
-  "title": "findings",
-  "description": "Placeholder — defined in M2 (see PLAN.md §8)."
+  "title": "Rule findings (findings.json)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["pack", "findings"],
+  "properties": {
+    "pack": { "type": "string" },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["rule", "severity", "auto_fixable", "file", "line", "column", "excerpt", "fix_hint", "docs_url"],
+        "properties": {
+          "rule": { "type": "string" },
+          "severity": { "enum": ["info", "warn", "error"] },
+          "auto_fixable": { "type": "boolean" },
+          "file": { "type": "string" },
+          "line": { "type": "integer", "minimum": 1 },
+          "column": { "type": "integer", "minimum": 1 },
+          "excerpt": { "type": "string" },
+          "fix_hint": { "type": "string" },
+          "docs_url": { "type": "string" }
+        }
+      }
+    }
+  }
 }
