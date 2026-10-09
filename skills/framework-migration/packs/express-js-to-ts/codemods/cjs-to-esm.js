@@ -252,5 +252,19 @@ export default function transform(file, api, options) {
     return replacement;
   });
   const single = (file.source.match(/require\('/g) ?? []).length >= (file.source.match(/require\("/g) ?? []).length;
-  return root.toSource({ quote: single ? "single" : "double" });
+  const output = root.toSource({ quote: single ? "single" : "double" });
+  return terminateExportAssignments(output, j);
+}
+
+/** recast prints `export = value` without the semicolon its other statements get; add it back. */
+function terminateExportAssignments(source, j) {
+  const ends = [];
+  j.withParser("ts")(source)
+    .find(j.TSExportAssignment)
+    .forEach((path) => {
+      if (source[path.node.end - 1] !== ";") ends.push(path.node.end);
+    });
+  let out = source;
+  for (const end of ends.sort((a, b) => b - a)) out = `${out.slice(0, end)};${out.slice(end)}`;
+  return out;
 }

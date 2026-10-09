@@ -59,6 +59,7 @@ export default function transform(file, api) {
     for (const s of path.node.specifiers ?? []) if (s.type === "ImportSpecifier") present.add(s.local?.name ?? s.imported.name);
   });
   const missing = ["Request", "Response", "NextFunction"].filter((name) => needed.has(name) && !present.has(name));
+  let atTop = false;
   if (missing.length > 0) {
     const specifiers = missing.map((name) => j.importSpecifier(j.identifier(name)));
     if (typeImports.size() > 0) {
@@ -73,9 +74,12 @@ export default function transform(file, api) {
         declaration.comments = body[0].comments;
         body[0].comments = null;
       }
+      atTop = index === 0 && body.length > 0;
       body.splice(index, 0, declaration);
     }
   }
   const single = (file.source.match(/'/g) ?? []).length >= (file.source.match(/"/g) ?? []).length;
-  return root.toSource({ quote: single ? "single" : "double" });
+  const output = root.toSource({ quote: single ? "single" : "double" });
+  // recast prints a new first statement flush against the code below it; separate them.
+  return atTop ? output.replace(/^(import type \{[^}]*\} from ['"]express['"];)\n(?!\n)/m, "$1\n\n") : output;
 }
