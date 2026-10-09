@@ -6,9 +6,19 @@ without a smoke probe either, that the test run loaded the migrated modules.
 
 | Pack | Fixtures | Compile pass % | Test parity % | Finding precision | Finding recall | Manual items |
 |---|---|---|---|---|---|---|
+| `eslint-flat-config` | 4 | 100% | 100% | 100% | 100% | 0 |
 | `express-4-to-5` | 5 | 100% | 100% | 100% | 100% | 5 |
 | `express-js-to-ts` | 5 | 100% | 100% | 100% | 100% | 5 |
 | `node-cjs-to-esm` | 4 | 100% | 100% | 100% | 100% | 7 |
+
+## eslint-flat-config
+
+| Fixture | Kind | Compiles | Tests (after/baseline) | Findings TP / FP / FN | Negative patterns kept | Matches after/ | Manual items |
+|---|---|---|---|---|---|---|---|
+| 01-json-config | positive | yes | 4/4 yes | 6 / 0 / 0 | — | yes | 0 |
+| 02-yaml-gitignore-env | positive | yes | 4/4 yes | 6 / 0 / 0 | — | yes | 0 |
+| 03-package-json-jsx | positive | yes | 3/3 yes | 2 / 0 / 0 | — | yes | 0 |
+| 04-compat-bridge | negative | yes | 3/3 yes | 4 / 0 / 0 | yes | yes | 0 |
 
 ## express-4-to-5
 

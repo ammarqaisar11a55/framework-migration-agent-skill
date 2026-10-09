@@ -259,3 +259,27 @@ up. (`obj/` is still ignored.)
 A library pack has neither a type-check nor a smoke probe. For it, the evals count the test run:
 an ES module graph links (syntax, specifiers, imported names) before any test runs, so passing tests
 prove the migrated modules load. The order is typecheck, then smoke, then test.
+
+## M9 — `eslint-flat-config`
+
+### D31. The pack also upgrades ESLint to 9
+PLAN §7 names the config-format migration. ESLint 9 is the release that drops eslintrc as the
+default, and `@eslint/migrate-config` targets 9 or 10, so the pack moves the project to ESLint 9.39.5
+(the `maintenance` line) in the same stage. ESLint 10 is not the target: it removes the remaining
+eslintrc support entirely, which belongs in its own pack.
+
+### D32. The migrator's runner refuses cases it cannot migrate equivalently
+`@eslint/migrate-config` keeps only the evaluated result of a JavaScript configuration and ignores
+nested `.eslintrc` files. Running it anyway would change which rules apply without any error, so
+`official-migrate.mjs` fails the stage in both cases with instructions (PLAN §6: never change
+behaviour; never proceed past a failed gate). Static JavaScript configurations are migrated.
+
+### D33. The `globals` package is an engine dependency
+`finish-flat-config.js` turns `eslint-env` comments into `/* global */` comments, which needs the
+environment → globals table at codemod time, before the project has installed `globals`. It moved
+from `devDependencies` to `dependencies` so the published package can run the codemod (D4).
+
+### D34. Lint packs are gated by tests that lint known-bad samples
+A lint gate passes for a configuration that lints nothing. The pack declares both `lint` and `test`
+checks, and every fixture's test suite lints deliberately bad samples through the ESLint API and
+asserts the rule ids, ignores and file coverage. The same tests run on ESLint 8 and 9.
