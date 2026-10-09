@@ -1,0 +1,41 @@
+id: express-js-to-ts
+title: Express (JavaScript) → Express (TypeScript)
+ecosystem: node
+tier: 1
+status: shipped
+
+from: { framework: express, language: javascript, versions: "4.x" }
+to:   { framework: express, language: typescript, versions: "4.x" }
+
+tools:
+  - { name: typescript, version: "6.0.3", role: devDependency }
+  - { name: "@types/express", version: "4.17.25", role: devDependency }
+  - { name: "@types/node", version: "20.19.43", role: devDependency }
+  - { name: jscodeshift, version: "17.4.0", role: engine }
+
+stages:
+  - id: tooling
+    title: Add TypeScript, type packages and a tsconfig.json that still accepts JavaScript (allowJs)
+    codemods: [add-ts-tooling.js]
+    post_commands: ["npm install"]
+  - id: rename-and-modules
+    title: Convert CommonJS require/module.exports to TypeScript module syntax, then rename sources to .ts
+    codemods: [cjs-to-esm.js, rename-to-ts.js]
+  - id: express-typing
+    title: Annotate Express middleware and handlers that TypeScript cannot type from context
+    codemods: [add-handler-types.js]
+    fix_rules: true
+  - id: strictness
+    title: Turn on strict type checking
+    codemods: [enable-strict.js]
+  - id: cleanup
+    title: Remove the allowJs shim once no JavaScript sources remain
+    codemods: [remove-allow-js.js]
+
+checks:
+  typecheck: "npx tsc --noEmit"
+  test: "npm test"
+  smoke:
+    start: "npm run build && npm start"
+    url: "http://127.0.0.1:{port}/"
+    timeout_ms: 90000

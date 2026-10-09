@@ -109,13 +109,17 @@ describe("runChecks", () => {
     expect((await runChecks(root, pack({ ...checks, test: "echo '# pass 5'" }), 1)).gate.reasons).toEqual(["test parity lost: 5 tests passed, the baseline had 6"]);
   });
 
-  it("smoke probe starts the app on a free port, waits for a 2xx, and stops it", async () => {
+  it("smoke probe starts the app on a free port, waits for an answer, and stops it", async () => {
     writeFileSync(join(root, "server.js"), "require('http').createServer((q, s) => { s.statusCode = q.url === '/health' ? 200 : 404; s.end('ok'); }).listen(process.env.PORT);\n");
     const smoke = { start: "node server.js", url: "http://127.0.0.1:{port}/health", timeout_ms: 15000 };
     await runChecks(root, pack({ test: "echo '# pass 1'", smoke }), 0);
     const result = await runChecks(root, pack({ test: "echo '# pass 1'", smoke }), 1);
     expect(result.checks.find((c) => c.name === "smoke")).toMatchObject({ status: "pass" });
     expect(result.gate.passed).toBe(true);
+
+    const notRouted = await runChecks(root, pack({ smoke: { ...smoke, url: "http://127.0.0.1:{port}/nope" } }), 1);
+    expect(notRouted.checks[0]).toMatchObject({ status: "pass" });
+    expect(notRouted.checks[0]?.output).toContain("answered 404");
   });
 
   it("smoke probe fails when the app exits before answering", async () => {

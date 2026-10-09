@@ -77,7 +77,10 @@ function freePort(): Promise<number> {
   });
 }
 
-/** Starts the app, polls the health URL until it answers 2xx, then stops the app. */
+/**
+ * Starts the app, polls the URL until it answers, then stops the app. Any status below 500 counts:
+ * a 404 on a URL the app does not route still proves that it booted and serves requests.
+ */
 async function probe(smoke: SmokeProbe, cwd: string, env: NodeJS.ProcessEnv): Promise<Omit<CheckOutcome, "name">> {
   const started = Date.now();
   const port = await freePort();
@@ -95,12 +98,12 @@ async function probe(smoke: SmokeProbe, cwd: string, env: NodeJS.ProcessEnv): Pr
   });
 
   const deadline = started + (smoke.timeout_ms ?? 60_000);
-  let verdict = `no 2xx response from ${url} before the timeout`;
+  let verdict = `no response from ${url} before the timeout`;
   let passed = false;
   while (Date.now() < deadline && exited === undefined) {
     try {
       const response = await fetch(url, { signal: AbortSignal.timeout(2000) });
-      if (response.ok) {
+      if (response.status < 500) {
         passed = true;
         verdict = `${url} answered ${response.status}`;
         break;

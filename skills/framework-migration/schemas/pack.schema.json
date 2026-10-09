@@ -172,7 +172,7 @@
                 "url": {
                   "type": "string",
                   "pattern": "^https?://",
-                  "description": "Probed until it answers 2xx. {port} is replaced with the chosen port."
+                  "description": "Probed until it answers with a status below 500. {port} is replaced with the chosen port."
                 },
                 "timeout_ms": {
                   "type": "integer",

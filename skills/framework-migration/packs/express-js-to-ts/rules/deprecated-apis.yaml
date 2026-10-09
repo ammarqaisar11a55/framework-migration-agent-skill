@@ -1,0 +1,90 @@
+# Patterns that matter when an Express app moves from JavaScript to TypeScript.
+# AST selectors are esquery selectors over the ESTree AST.
+rules:
+  - id: cjs-require
+    description: Top-level require() of a module by a literal name.
+    matcher:
+      type: ast
+      selector: >-
+        Program > VariableDeclaration > VariableDeclarator > CallExpression.init[callee.name="require"][arguments.0.type="Literal"],
+        Program > ExpressionStatement > CallExpression[callee.name="require"][arguments.0.type="Literal"]
+    severity: warn
+    auto_fixable: true
+    fix_hint: Converted by cjs-to-esm.js to an import declaration (or `import x = require()` where the module's export shape must be preserved).
+    docs_url: https://www.typescriptlang.org/docs/handbook/migrating-from-javascript.html
+
+  - id: cjs-exports
+    description: Assignment to module.exports or to a property of exports.
+    matcher:
+      type: ast
+      selector: >-
+        AssignmentExpression[left.object.name="module"][left.property.name="exports"],
+        AssignmentExpression[left.object.object.name="module"][left.object.property.name="exports"],
+        AssignmentExpression[left.object.name="exports"]
+    severity: warn
+    auto_fixable: true
+    fix_hint: Converted by cjs-to-esm.js to export declarations (or `export =` where the module's export shape must be preserved).
+    docs_url: https://www.typescriptlang.org/docs/handbook/migrating-from-javascript.html
+
+  - id: untyped-express-handler
+    description: A named middleware or handler function whose (req, res, next) parameters TypeScript cannot type from context.
+    matcher:
+      type: ast
+      selector: >-
+        :function[params.0.name=/^(req|request)$/][params.1.name=/^(res|response)$/]:not([params.0.typeAnnotation]):not(CallExpression > .arguments),
+        :function[params.0.name=/^(err|error)$/][params.1.name=/^(req|request)$/][params.2.name=/^(res|response)$/]:not([params.0.typeAnnotation]):not(CallExpression > .arguments)
+    severity: warn
+    auto_fixable: true
+    fix_hint: Annotated by add-handler-types.js with Request, Response and NextFunction from express.
+    docs_url: https://expressjs.com/en/guide/writing-middleware.html
+
+  - id: dynamic-require
+    description: require() with a computed path. The loaded module cannot be known statically.
+    matcher:
+      type: ast
+      selector: 'CallExpression[callee.name="require"]:not([arguments.0.type="Literal"])'
+    severity: error
+    auto_fixable: false
+    fix_hint: Leave the call as it is. Modules that may be loaded this way keep their CommonJS shape (`export =`); check that every such module still exports what the loader expects, and that the path still resolves from the build output directory.
+    docs_url: https://www.typescriptlang.org/docs/handbook/modules/reference.html
+
+  - id: nested-require
+    description: require() of a literal module name that is not a top-level declaration (lazy or conditional loading).
+    matcher:
+      type: ast
+      selector: >-
+        CallExpression[callee.name="require"][arguments.0.type="Literal"]:not(Program > VariableDeclaration > VariableDeclarator > .init):not(Program > ExpressionStatement > .expression)
+    severity: warn
+    auto_fixable: false
+    fix_hint: Left unchanged because hoisting it to an import would change when the module loads. The result is typed `any`; convert it to `await import()` or a top-level import by hand if eager loading is acceptable.
+    docs_url: https://www.typescriptlang.org/docs/handbook/modules/reference.html
+
+  - id: req-custom-property
+    description: Assignment of a custom property on the request object, which the Request type does not declare.
+    matcher:
+      type: ast
+      selector: 'AssignmentExpression[left.type="MemberExpression"][left.object.name=/^(req|request)$/]'
+    severity: error
+    auto_fixable: false
+    fix_hint: Store per-request data on res.locals, or declare the property by augmenting the Express.Request interface (declaration merging).
+    docs_url: https://www.typescriptlang.org/docs/handbook/declaration-merging.html
+
+  - id: prototype-extension
+    description: Assignment to a prototype, which TypeScript rejects unless the property is declared.
+    matcher:
+      type: ast
+      selector: 'AssignmentExpression[left.object.property.name="prototype"]'
+    severity: error
+    auto_fixable: false
+    fix_hint: Declare the added member (interface merging or a class), or move the helper to a plain function. Do not change what the code does.
+    docs_url: https://www.typescriptlang.org/docs/handbook/declaration-merging.html
+
+  - id: dirname-usage
+    description: __dirname or __filename. After the build the code runs from the output directory.
+    matcher:
+      type: ast
+      selector: 'Identifier[name=/^__(dirname|filename)$/]'
+    severity: info
+    auto_fixable: false
+    fix_hint: Check that every path built from it still resolves from the build output directory; files that tsc does not emit (views, static assets) are not copied there.
+    docs_url: https://www.typescriptlang.org/tsconfig/outDir.html

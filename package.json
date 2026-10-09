@@ -43,7 +43,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "evals": "tsx evals/run-evals.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
