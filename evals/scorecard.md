@@ -10,6 +10,7 @@ without a smoke probe either, that the test run loaded the migrated modules.
 | `express-4-to-5` | 5 | 100% | 100% | 100% | 100% | 5 |
 | `express-js-to-ts` | 5 | 100% | 100% | 100% | 100% | 5 |
 | `node-cjs-to-esm` | 4 | 100% | 100% | 100% | 100% | 7 |
+| `react-major-upgrade` | 4 | 100% | 100% | 100% | 100% | 7 |
 
 ## eslint-flat-config
 
@@ -48,3 +49,12 @@ without a smoke probe either, that the test run loaded the migrated modules.
 | 02-shapes-and-packages | positive | yes | 4/4 yes | 13 / 0 / 0 | — | yes | 0 |
 | 03-entry-lazy-dotenv | positive | yes | 4/4 yes | 19 / 0 / 0 | — | yes | 3 |
 | 04-unconvertible | negative | yes | 4/4 yes | 20 / 0 / 0 | yes | yes | 4 |
+
+## react-major-upgrade
+
+| Fixture | Kind | Compiles | Tests (after/baseline) | Findings TP / FP / FN | Negative patterns kept | Matches after/ | Manual items |
+|---|---|---|---|---|---|---|---|
+| 01-legacy-root | positive | yes | 1/1 yes | 2 / 0 / 0 | — | yes | 0 |
+| 02-string-refs | positive | yes | 1/1 yes | 3 / 0 / 0 | — | yes | 0 |
+| 03-function-defaults | positive | yes | 3/3 yes | 4 / 0 / 0 | — | yes | 4 |
+| 04-deprecated-but-working | negative | yes | 1/1 yes | 3 / 0 / 0 | yes | yes | 3 |

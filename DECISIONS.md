@@ -304,3 +304,29 @@ the agent reads. The engine runs with `npx -y -p framework-migration-agent-skill
 pinned in `SKILL.md`; a unit test fails when that version differs from package.json, so a release
 bumps both. Another test checks the frontmatter against the spec's constraints. `SKILL.md` gained
 the optional `license` and `compatibility` fields, and its wording names no client-specific tools.
+
+## M9 — `react-major-upgrade`
+
+### D37. React 17/18 → 19 through 18.3, codemods gated on 18.3
+The upgrade guide recommends React 18.3 first. The pack upgrades to 18.3.1, applies the codemods
+while still on 18.3 (all their targets — `createRoot`, `React.act`, callback refs — exist there), and
+upgrades to 19.3.0 last, so the final gate isolates React 19 itself.
+
+### D38. The React 19 codemods run from react-codemod's source at a pinned commit
+The guide runs them through the Codemod registry, which resolves them at run time and was not
+reachable. They are TypeScript jscodeshift transforms in `reactjs/react-codemod`, absent from the
+npm package (5.4.4). `official-codemods.mjs` fetches the repository at a pinned commit and runs
+`replace-reactdom-render`, `replace-string-ref`, `replace-act-import` and `replace-use-form-state`
+with jscodeshift 17.4.0, on a scratch copy with a diff (same pattern as D17/D18).
+`prop-types-typescript` (TypeScript sources only) and `types-react-codemod` are not run: there is
+no TypeScript fixture to verify them, so rule `types-react` reports the step with the exact command.
+
+### D39. Function-component `defaultProps` are converted only when exact
+React 19 silently ignores them. The guide's replacement (default parameters) is applied by
+`function-default-props.js` for literal and identifier defaults on destructured props; object,
+array and function defaults would become a new value per render and are reported instead.
+
+### D40. React fixtures run JSX through tsx with jsdom
+`node --test` with `--import tsx` and `"jsx": "react-jsx"` (`allowJs` so tsx applies it to `.jsx`),
+`jsdom` 29.1.1 for DOM tests (30.x needs Node 22.22.2), and `--test-force-exit` because React 17's
+scheduler keeps a `MessageChannel` open under a `window`.

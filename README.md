@@ -109,7 +109,7 @@ Tier 1 = automated, 2 = partially automated, 3 = assist mode (inventory, finding
 | [`express-4-to-5`](skills/framework-migration/packs/express-4-to-5) | Express 4 → 5 | 1 | shipped |
 | [`node-cjs-to-esm`](skills/framework-migration/packs/node-cjs-to-esm) | CommonJS → ESM | 1 | shipped |
 | [`eslint-flat-config`](skills/framework-migration/packs/eslint-flat-config) | legacy `.eslintrc` → flat config | 1 | shipped |
-| `react-major-upgrade` | React 17 → 18 → 19 | 1 | planned |
+| [`react-major-upgrade`](skills/framework-migration/packs/react-major-upgrade) | React 17 → 18 → 19 | 1 | shipped |
 | `nextjs-major-upgrade` | Next.js majors; Pages → App Router | 1 | planned |
 | `angular-major-upgrade` | Angular majors | 1 | planned |
 | `svelte-4-to-5` | Svelte 4 → 5 | 1 | planned |

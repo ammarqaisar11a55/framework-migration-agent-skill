@@ -1,0 +1,135 @@
+# React APIs that React 19 removes or changes. Source: the React 19 upgrade guide
+# (references/official-sources.md). AST selectors are esquery selectors over the ESTree AST.
+
+rules:
+  - id: reactdom-render
+    description: ReactDOM.render, removed in React 19.
+    matcher:
+      type: ast
+      selector: 'CallExpression[callee.property.name="render"][callee.object.name=/^(ReactDOM|ReactDom|reactDom|ReactDOMClient)$/], CallExpression[callee.name="render"][arguments.length=2]:not([arguments.0.type="ObjectExpression"])'
+    severity: error
+    auto_fixable: true
+    fix_hint: "Rewritten by the official replace-reactdom-render codemod to createRoot(container).render(element). createRoot renders asynchronously: code that reads the DOM right after render() must wrap it in act() (tests) or flushSync."
+    docs_url: https://react.dev/blog/2024/04/25/react-19-upgrade-guide#removed-reactdom-render
+
+  - id: string-ref
+    description: A string ref (ref="name"), removed in React 19.
+    matcher:
+      type: ast
+      selector: 'JSXAttribute[name.name="ref"][value.type="Literal"]'
+    severity: error
+    auto_fixable: true
+    fix_hint: "Rewritten by the official replace-string-ref codemod to a callback ref that stores the node in this.refs."
+    docs_url: https://react.dev/blog/2024/04/25/react-19-upgrade-guide#removed-string-refs
+
+  - id: test-utils-act
+    description: act imported from react-dom/test-utils, which React 19 removes.
+    matcher:
+      type: ast
+      selector: 'ImportDeclaration[source.value="react-dom/test-utils"], CallExpression[callee.name="require"][arguments.0.value="react-dom/test-utils"]'
+    severity: error
+    auto_fixable: true
+    fix_hint: "act moves to the react package (official replace-act-import codemod). Other test-utils APIs (renderIntoDocument, Simulate) are removed; use @testing-library/react."
+    docs_url: https://react.dev/blog/2024/04/25/react-19-upgrade-guide#removed-react-dom-test-utils
+
+  - id: function-default-props
+    description: defaultProps assigned to a component. React 19 ignores it on function components; class components keep it.
+    matcher:
+      type: ast
+      selector: 'AssignmentExpression[left.property.name="defaultProps"]'
+    severity: warn
+    auto_fixable: false
+    fix_hint: "function-default-props.js moves literal defaults of function components into the destructured parameters. Class components need nothing. Otherwise move the defaults into the parameter list by hand."
+    docs_url: https://react.dev/blog/2024/04/25/react-19-upgrade-guide#removed-proptypes-and-defaultprops
+
+  - id: prop-types
+    description: propTypes on a component; React 19 no longer checks them (they are silently ignored).
+    matcher:
+      type: ast
+      selector: 'AssignmentExpression[left.property.name="propTypes"]'
+    severity: info
+    auto_fixable: false
+    fix_hint: "Nothing breaks, but the runtime checks are gone. Move to TypeScript (the prop-types-typescript codemod converts them) or another type checker."
+    docs_url: https://react.dev/blog/2024/04/25/react-19-upgrade-guide#removed-proptypes-and-defaultprops
+
+  - id: reactdom-hydrate
+    description: ReactDOM.hydrate, removed in React 19.
+    matcher:
+      type: ast
+      selector: 'CallExpression[callee.property.name="hydrate"][callee.object.name=/^(ReactDOM|ReactDom)$/]'
+    severity: error
+    auto_fixable: false
+    fix_hint: "Use hydrateRoot(container, element) from react-dom/client."
+    docs_url: https://react.dev/blog/2024/04/25/react-19-upgrade-guide#removed-reactdom-hydrate
+
+  - id: unmount-component-at-node
+    description: ReactDOM.unmountComponentAtNode, removed in React 19.
+    matcher:
+      type: ast
+      selector: 'CallExpression[callee.property.name="unmountComponentAtNode"], CallExpression[callee.name="unmountComponentAtNode"]'
+    severity: error
+    auto_fixable: false
+    fix_hint: "Keep the root returned by createRoot and call root.unmount()."
+    docs_url: https://react.dev/blog/2024/04/25/react-19-upgrade-guide#removed-unmountcomponentatnode
+
+  - id: find-dom-node
+    description: findDOMNode, removed in React 19.
+    matcher:
+      type: ast
+      selector: 'CallExpression[callee.property.name="findDOMNode"], CallExpression[callee.name="findDOMNode"]'
+    severity: error
+    auto_fixable: false
+    fix_hint: "Attach a ref to the DOM element instead."
+    docs_url: https://react.dev/blog/2024/04/25/react-19-upgrade-guide#removed-reactdom-finddomnode
+
+  - id: legacy-context
+    description: Legacy context (contextTypes / childContextTypes / getChildContext), removed in React 19.
+    matcher:
+      type: ast
+      selector: 'AssignmentExpression[left.property.name=/^(contextTypes|childContextTypes)$/], MethodDefinition[key.name="getChildContext"], PropertyDefinition[key.name=/^(contextTypes|childContextTypes)$/]'
+    severity: error
+    auto_fixable: false
+    fix_hint: "Move to createContext with a Provider and contextType / useContext."
+    docs_url: https://react.dev/blog/2024/04/25/react-19-upgrade-guide#removed-removing-legacy-context
+
+  - id: create-factory
+    description: React.createFactory, removed in React 19.
+    matcher:
+      type: ast
+      selector: 'CallExpression[callee.property.name="createFactory"], CallExpression[callee.name="createFactory"]'
+    severity: error
+    auto_fixable: false
+    fix_hint: "Use JSX or createElement directly."
+    docs_url: https://react.dev/blog/2024/04/25/react-19-upgrade-guide#removed-createfactory
+
+  - id: shallow-renderer
+    description: react-test-renderer/shallow, removed in React 19; react-test-renderer itself is deprecated.
+    matcher:
+      type: regex
+      pattern: '["'']react-test-renderer(/shallow)?["'']'
+    severity: warn
+    auto_fixable: false
+    fix_hint: "react-test-renderer still works in React 19 but is deprecated and logs a warning; the shallow renderer is removed (install react-shallow-renderer). Move tests to @testing-library/react."
+    docs_url: https://react.dev/blog/2024/04/25/react-19-upgrade-guide#deprecated-react-test-renderer
+
+  - id: element-ref
+    description: element.ref read from a React element; deprecated in React 19 (ref is now a regular prop).
+    matcher:
+      type: ast
+      selector: 'MemberExpression[property.name="ref"][object.type="Identifier"][object.name=/^(element|child|el|node)$/]'
+    severity: info
+    auto_fixable: false
+    fix_hint: "Read element.props.ref instead; element.ref still works but warns and will be removed."
+    docs_url: https://react.dev/blog/2024/04/25/react-19-upgrade-guide#deprecated-element-ref
+
+  - id: types-react
+    description: The project uses @types/react; React 19's TypeScript types remove deprecated types and change useRef, ReactElement and the JSX namespace.
+    matcher:
+      type: regex
+      pattern: '"@types/react"\s*:'
+    extensions: [".json"]
+    exclude: ['^(?!package\.json$)']
+    severity: warn
+    auto_fixable: false
+    fix_hint: "After the react-19 stage, run the official types codemod: npx types-react-codemod@3.5.3 preset-19 ./src (and react-element-default-any-props if element.props is read loosely), then type-check."
+    docs_url: https://react.dev/blog/2024/04/25/react-19-upgrade-guide#typescript-changes

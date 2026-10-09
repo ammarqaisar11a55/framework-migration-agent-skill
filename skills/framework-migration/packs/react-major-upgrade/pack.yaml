@@ -1,0 +1,44 @@
+id: react-major-upgrade
+title: React 17 / 18 → React 19
+ecosystem: node
+tier: 1
+status: shipped
+
+from: { framework: react, versions: ">=17.0.0 <19.0.0" }
+to:   { framework: react, versions: "19.x" }
+
+tools:
+  # The React 19 codemods, run from source at this commit by codemods/official-codemods.mjs.
+  - name: react-codemod
+    version: "5.4.4"
+    source: https://github.com/reactjs/react-codemod
+    ref: 5207d594fad6f8b39c51fd7edd2bcb51047dc872
+    role: engine
+  - { name: jscodeshift, version: "17.4.0", role: engine }
+  # Set by react-19.js for the packages the project already depends on. (react-18-3.js uses 18.3.1.)
+  - { name: react, version: "19.3.0", role: dependency }
+  - { name: react-dom, version: "19.3.0", role: dependency }
+  - { name: react-test-renderer, version: "19.3.0", role: devDependency }
+  - { name: react-is, version: "19.3.0", role: dependency }
+  - { name: "@types/react", version: "19.3.0", role: devDependency }
+  - { name: "@types/react-dom", version: "19.3.0", role: devDependency }
+
+stages:
+  - id: react-18-3
+    title: Upgrade to React 18.3.1, which warns about every API React 19 removes
+    codemods: [react-18-3.js]
+    post_commands: ["npm install"]
+  - id: codemods
+    title: Apply the React 19 codemods and move function-component defaultProps into parameters (still on 18.3)
+    commands:
+      - run: "node {pack_dir}/codemods/official-codemods.mjs"
+        dry_run: "node {pack_dir}/codemods/official-codemods.mjs --dry-run"
+    codemods: [function-default-props.js]
+    fix_rules: true
+  - id: react-19
+    title: Upgrade to React 19
+    codemods: [react-19.js]
+    post_commands: ["npm install"]
+
+checks:
+  test: "npm test"
