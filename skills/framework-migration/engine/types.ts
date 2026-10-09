@@ -15,11 +15,14 @@ export interface PackTool {
   role?: "dependency" | "devDependency" | "engine";
 }
 
+export type StageCommand = string | { run: string; dry_run: string };
+
 export interface PackStage {
   id: string;
   title?: string;
   codemods?: string[];
-  commands?: string[];
+  commands?: StageCommand[];
+  post_commands?: StageCommand[];
   fix_rules?: boolean;
 }
 

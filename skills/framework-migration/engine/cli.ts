@@ -4,9 +4,11 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { resolve } from "node:path";
 import { artifactPath, writeJson } from "./artifacts.ts";
+import { detect } from "./detect.ts";
 import { detectStack, matchPacks } from "./detect-stack.ts";
 import { buildInventory } from "./inventory.ts";
-import { listPacks, validatePack } from "./pack.ts";
+import { findPack, listPacks, validatePack } from "./pack.ts";
+import { runStage } from "./run-codemod.ts";
 import { validate } from "./schema.ts";
 
 export interface CliResult {
@@ -75,12 +77,65 @@ const inventoryCommand: Handler = ({ positionals, values }) => {
   );
 };
 
+function packOption(values: Args["values"]): ReturnType<typeof findPack> {
+  const id = values["pack"];
+  if (typeof id !== "string") throw new Error("missing --pack <id>");
+  return findPack(id);
+}
+
+const detectCommand: Handler = ({ positionals, values }) => {
+  const root = resolve(positionals[0] ?? ".");
+  const findings = detect(root, packOption(values));
+  const out = typeof values["out"] === "string" ? resolve(values["out"]) : artifactPath(root, "findings.json");
+  writeJson(out, findings);
+  const auto = findings.findings.filter((f) => f.auto_fixable).length;
+  return ok(
+    [
+      `Wrote ${out}`,
+      `Findings: ${findings.findings.length} (${auto} auto-fixable, ${findings.findings.length - auto} manual)`,
+      ...findings.findings.map((f) => `  ${f.severity.padEnd(5)} ${f.file}:${f.line}  ${f.rule}${f.auto_fixable ? "" : "  [manual]"}`),
+    ].join("\n"),
+  );
+};
+
+const runCodemodCommand: Handler = async ({ positionals, values }) => {
+  const stage = values["stage"];
+  if (typeof stage !== "string") return fail("fm run-codemod: missing --stage <id>", 2);
+  if ((values["dry-run"] === true) === (values["apply"] === true)) {
+    return fail("fm run-codemod: pass exactly one of --dry-run or --apply", 2);
+  }
+  const root = resolve(positionals[0] ?? ".");
+  const result = await runStage(root, packOption(values), stage, {
+    apply: values["apply"] === true,
+    skipCommands: values["skip-commands"] === true,
+  });
+  writeJson(artifactPath(root, "diffs", `stage-${result.number}`, "summary.json"), {
+    ...result,
+    codemods: result.codemods.map(({ codemod, changes, notes, errors }) => ({
+      codemod,
+      files: changes.map((c) => (c.from === null ? `+ ${c.to}` : c.from === c.to ? c.to : `${c.from} → ${c.to}`)),
+      notes,
+      errors,
+    })),
+    commands: result.commands.map(({ command, phase, status }) => ({ command, phase, status })),
+  });
+  const lines = [`Stage ${result.number} (${result.stage}) — ${result.mode}${result.ok ? "" : " — FAILED"}`];
+  for (const command of result.commands) lines.push(`  command [${command.status}] ${command.command}`);
+  for (const codemod of result.codemods) {
+    lines.push(`  ${codemod.codemod}: ${codemod.changes.length} file(s) ${result.mode === "apply" ? "changed" : "would change"}`);
+    for (const note of codemod.notes) lines.push(`    note: ${note}`);
+    for (const error of codemod.errors) lines.push(`    error: ${error.path}: ${error.message}`);
+  }
+  lines.push("Patches:", ...result.patches.map((p) => `  ${p}`));
+  return result.ok ? ok(lines.join("\n")) : fail(lines.join("\n"));
+};
+
 export const COMMANDS: readonly Command[] = [
   { name: "validate-pack", usage: "validate-pack <path>", summary: "Validate a pack directory against the schemas", milestone: "M2", handler: validatePackCommand },
   { name: "detect-stack", usage: "detect-stack [dir]", summary: "Detect language, framework and version from manifests", milestone: "M3", handler: detectStackCommand },
   { name: "inventory", usage: "inventory [dir] [--out <file>]", summary: "Build inventory.json (files, dependency graph, entry points, risk)", milestone: "M3", handler: inventoryCommand },
-  { name: "detect", usage: "detect --pack <id> [dir]", summary: "Run a pack's rules and write findings.json", milestone: "M4" },
-  { name: "run-codemod", usage: "run-codemod --pack <id> --stage <id> (--dry-run | --apply) [dir]", summary: "Run a stage's codemods; dry-run writes patches", milestone: "M4" },
+  { name: "detect", usage: "detect --pack <id> [dir] [--out <file>]", summary: "Run a pack's rules and write findings.json", milestone: "M4", handler: detectCommand },
+  { name: "run-codemod", usage: "run-codemod --pack <id> --stage <id> (--dry-run | --apply) [--skip-commands] [dir]", summary: "Run a stage's codemods; dry-run writes patches", milestone: "M4", handler: runCodemodCommand },
   { name: "check", usage: "check --pack <id> --stage <n> [dir]", summary: "Run a pack's compatibility checks against the baseline", milestone: "M5" },
   { name: "report", usage: "report --pack <id> [dir]", summary: "Generate MIGRATION_REPORT.md", milestone: "M5" },
 ];

@@ -19,7 +19,9 @@ tools:
 
 # Stages run in order; each one is committed separately so it is a rollback point.
 # codemods: files in codemods/, run leaf → root over the dependency graph, always dry-run first.
-# commands: shell commands run after the stage's codemods are applied (official upgrade tool first).
+# commands: run before the codemods — the official upgrade tool goes here. Use the
+#   { run: "...", dry_run: "..." } form whenever the tool has a preview mode, so --dry-run can show it.
+# post_commands: run after the codemods are applied (e.g. a dependency install).
 stages:
   - id: tooling
     title: Upgrade packages and config, enable compatibility shims

@@ -42,3 +42,19 @@ export function walkAst(node: Node, visit: (node: Node, parent: Node | undefined
     }
   }
 }
+
+/**
+ * Child-holding keys per node type, derived from the tree itself. esquery's built-in key table
+ * only knows plain ESTree, so without this it never descends into TypeScript nodes.
+ */
+export function visitorKeys(program: Node): Record<string, string[]> {
+  const keys: Record<string, Set<string>> = {};
+  walkAst(program, (node) => {
+    const set = (keys[node.type] ??= new Set());
+    for (const [key, value] of Object.entries(node)) {
+      if (SKIPPED_KEYS.has(key)) continue;
+      if (isNode(value) || (Array.isArray(value) && value.some(isNode))) set.add(key);
+    }
+  });
+  return Object.fromEntries(Object.entries(keys).map(([type, set]) => [type, [...set]]));
+}

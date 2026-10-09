@@ -4,25 +4,89 @@
   "title": "Migration pack manifest (pack.yaml)",
   "type": "object",
   "additionalProperties": false,
-  "required": ["id", "title", "ecosystem", "tier", "status", "from", "to", "tools", "stages", "checks"],
+  "required": [
+    "id",
+    "title",
+    "ecosystem",
+    "tier",
+    "status",
+    "from",
+    "to",
+    "tools",
+    "stages",
+    "checks"
+  ],
   "properties": {
-    "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "description": "Must equal the pack directory name." },
-    "title": { "type": "string", "minLength": 1 },
-    "ecosystem": { "enum": ["node", "python", "jvm", "dotnet", "php", "ruby", "dart", "go"] },
-    "tier": { "enum": [1, 2, 3], "description": "1 = automate, 2 = partial, 3 = assist mode." },
-    "status": { "enum": ["planned", "in progress", "shipped"], "description": "Shipped packs must have at least 3 positive and 1 negative fixture." },
-    "from": { "$ref": "#/definitions/stack" },
-    "to": { "$ref": "#/definitions/stack" },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "Must equal the pack directory name."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ecosystem": {
+      "enum": [
+        "node",
+        "python",
+        "jvm",
+        "dotnet",
+        "php",
+        "ruby",
+        "dart",
+        "go"
+      ]
+    },
+    "tier": {
+      "enum": [
+        1,
+        2,
+        3
+      ],
+      "description": "1 = automate, 2 = partial, 3 = assist mode."
+    },
+    "status": {
+      "enum": [
+        "planned",
+        "in progress",
+        "shipped"
+      ],
+      "description": "Shipped packs must have at least 3 positive and 1 negative fixture."
+    },
+    "from": {
+      "$ref": "#/definitions/stack"
+    },
+    "to": {
+      "$ref": "#/definitions/stack"
+    },
     "tools": {
       "type": "array",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["name", "version"],
+        "required": [
+          "name",
+          "version"
+        ],
         "properties": {
-          "name": { "type": "string", "minLength": 1 },
-          "version": { "type": "string", "pattern": "^v?[0-9]+\\.[0-9]+(\\.[0-9]+)?([+-][0-9A-Za-z.+-]+)?$", "description": "Exact version. Ranges (^, ~, x, >=) and placeholders are rejected." },
-          "role": { "enum": ["dependency", "devDependency", "engine"], "description": "dependency/devDependency tools are added to the target project; engine tools are used by the pack's codemods." }
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "version": {
+            "type": "string",
+            "pattern": "^v?[0-9]+\\.[0-9]+(\\.[0-9]+)?([+-][0-9A-Za-z.+-]+)?$",
+            "description": "Exact version. Ranges (^, ~, x, >=) and placeholders are rejected."
+          },
+          "role": {
+            "enum": [
+              "dependency",
+              "devDependency",
+              "engine"
+            ],
+            "description": "dependency/devDependency tools are added to the target project; engine tools are used by the pack's codemods."
+          }
         }
       }
     },
@@ -32,13 +96,42 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id"],
+        "required": [
+          "id"
+        ],
         "properties": {
-          "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
-          "title": { "type": "string" },
-          "codemods": { "type": "array", "items": { "type": "string" }, "description": "File names in codemods/, run in order." },
-          "commands": { "type": "array", "items": { "type": "string" }, "description": "Shell commands run after the codemods are applied (e.g. the official upgrade tool, or a dependency install)." },
-          "fix_rules": { "type": "boolean", "description": "Stage addresses auto_fixable findings." }
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+          },
+          "title": {
+            "type": "string"
+          },
+          "codemods": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "File names in codemods/, run in order."
+          },
+          "commands": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/command"
+            },
+            "description": "Run before the stage's codemods: the official migration tool goes here."
+          },
+          "fix_rules": {
+            "type": "boolean",
+            "description": "Stage addresses auto_fixable findings."
+          },
+          "post_commands": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/command"
+            },
+            "description": "Run after the stage's codemods are applied (e.g. a dependency install)."
+          }
         }
       }
     },
@@ -47,10 +140,18 @@
       "minProperties": 1,
       "additionalProperties": false,
       "properties": {
-        "typecheck": { "type": "string" },
-        "test": { "type": "string" },
-        "lint": { "type": "string" },
-        "smoke": { "type": "string" }
+        "typecheck": {
+          "type": "string"
+        },
+        "test": {
+          "type": "string"
+        },
+        "lint": {
+          "type": "string"
+        },
+        "smoke": {
+          "type": "string"
+        }
       }
     }
   },
@@ -58,12 +159,53 @@
     "stack": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["framework", "versions"],
+      "required": [
+        "framework",
+        "versions"
+      ],
       "properties": {
-        "framework": { "type": "string", "minLength": 1 },
-        "language": { "type": "string", "minLength": 1 },
-        "versions": { "type": "string", "minLength": 1, "description": "semver range, e.g. \"4.x\"." }
+        "framework": {
+          "type": "string",
+          "minLength": 1
+        },
+        "language": {
+          "type": "string",
+          "minLength": 1
+        },
+        "versions": {
+          "type": "string",
+          "minLength": 1,
+          "description": "semver range, e.g. \"4.x\"."
+        }
       }
+    },
+    "command": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "description": "Shell command with no preview mode; --dry-run lists it without running it."
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "run",
+            "dry_run"
+          ],
+          "properties": {
+            "run": {
+              "type": "string",
+              "minLength": 1
+            },
+            "dry_run": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Variant of the command that only reports what it would change."
+            }
+          }
+        }
+      ]
     }
   }
 }
