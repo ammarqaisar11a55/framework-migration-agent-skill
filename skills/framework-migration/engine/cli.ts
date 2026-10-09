@@ -7,6 +7,7 @@ import { artifactPath, writeJson } from "./artifacts.ts";
 import { runChecks } from "./check.ts";
 import { detect } from "./detect.ts";
 import { detectStack, matchPacks } from "./detect-stack.ts";
+import { CLIENTS, installFor, type Client } from "./install-skill.ts";
 import { buildInventory } from "./inventory.ts";
 import { findPack, listPacks, validatePack } from "./pack.ts";
 import { collectReportData, renderReport } from "./report.ts";
@@ -156,6 +157,15 @@ const reportCommand: Handler = ({ positionals, values }) => {
   return ok(`Wrote ${out}`);
 };
 
+const installSkillCommand: Handler = ({ values }) => {
+  const client = (values["client"] ?? "all") as string;
+  if (!(CLIENTS as readonly string[]).includes(client)) return fail(`fm install-skill: --client must be one of ${CLIENTS.join(", ")}`, 2);
+  const scope = values["user"] === true ? "user" : "project";
+  const project = typeof values["project"] === "string" ? values["project"] : ".";
+  const paths = installFor(client as Client, scope, project);
+  return ok(["Installed the framework-migration skill:", ...paths.map((p) => `  ${p}`)].join("\n"));
+};
+
 export const COMMANDS: readonly Command[] = [
   { name: "validate-pack", usage: "validate-pack <path>", summary: "Validate a pack directory against the schemas", handler: validatePackCommand },
   { name: "detect-stack", usage: "detect-stack [dir]", summary: "Detect language, framework and version from manifests", handler: detectStackCommand },
@@ -164,6 +174,7 @@ export const COMMANDS: readonly Command[] = [
   { name: "run-codemod", usage: "run-codemod --pack <id> --stage <id> (--dry-run | --apply) [--skip-commands] [dir]", summary: "Run a stage's codemods; dry-run writes patches", handler: runCodemodCommand },
   { name: "check", usage: "check --pack <id> --stage <n|id> [--allow-dirty] [dir]", summary: "Run a pack's compatibility checks against the baseline", handler: checkCommand },
   { name: "report", usage: "report --pack <id> [dir] [--out <file>]", summary: "Generate MIGRATION_REPORT.md", handler: reportCommand },
+  { name: "install-skill", usage: "install-skill [--client claude|codex|cursor|agents|all] [--user] [--project <dir>]", summary: "Install the skill where Claude Code, Codex or Cursor loads it", handler: installSkillCommand },
 ];
 
 export function usage(): string {
@@ -182,6 +193,9 @@ const OPTIONS = {
   "allow-dirty": { type: "boolean" },
   "skip-commands": { type: "boolean" },
   json: { type: "boolean" },
+  client: { type: "string" },
+  user: { type: "boolean" },
+  project: { type: "string" },
 } as const;
 
 export async function run(argv: readonly string[]): Promise<CliResult> {

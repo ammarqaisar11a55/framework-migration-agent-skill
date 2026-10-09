@@ -1,6 +1,8 @@
 ---
 name: framework-migration
 description: Use when migrating an application between frameworks or languages, upgrading to a new major version, replacing deprecated APIs, or producing a staged migration report. Runs a gated, commit-per-stage workflow driven by pluggable migration packs.
+license: MIT
+compatibility: Needs a shell with Node.js 20.19+ and npm/npx, git, and network access to the npm registry (and GitHub for packs that run official tools from source). Works in any Agent Skills client, such as Claude Code, Codex and Cursor.
 ---
 
 # Framework migration
@@ -11,12 +13,17 @@ writes the report. You drive the stages, fix what the codemods cannot, and keep 
 
 ## Running the engine
 
-| Where the skill lives | Command |
-|---|---|
-| Installed from npm | `npx -p framework-migration-agent-skill fm <command>` |
-| A checkout of this repository | `npm run fm -- <command>` (from the repository root) |
+The engine is a command-line tool published on npm. Run it from a shell with the version this skill
+was written for:
 
-Below, `fm` means whichever of these applies. Run every command against the project directory
+```
+npx -y -p framework-migration-agent-skill@0.1.0 fm <command>
+```
+
+In a checkout of the skill's own repository, `npm run fm -- <command>` (from its root) runs the same
+engine from source. If npm cannot find the package (a release that is not published yet), ask the
+user for a checkout of the repository and use that. Below, `fm` means one of these. Paths such as `packs/<id>/references/` are
+relative to this file's directory. Run every command against the project directory
 (`[dir]`, default `.`). Artifacts go to `<dir>/.fm/`; add `.fm/` to `.git/info/exclude` so stage
 commits do not pick it up. `fm --help` prints every command and flag.
 
@@ -87,11 +94,12 @@ to the previous stage commit.
 
 ```
 packs/<id>/
-  pack.yaml                  stages, pinned tools, checks (schema: schemas/pack.schema.json)
-  rules/deprecated-apis.yaml detection rules (schema: schemas/rules.schema.json)
-  codemods/                  jscodeshift transforms and file-level codemods run by the stages
+  pack.yaml                  stages, pinned tools, checks
+  rules/deprecated-apis.yaml detection rules
   references/                official sources, patterns, pitfalls: read before migrating
-  fixtures/<case>/           before/, after/, expected-report.md: what the evals check
+  codemods/, fixtures/       in the npm package and the repository only; the engine runs them
 ```
 
-`packs/_template/` is the starting point for a new pack; `fm validate-pack packs/<id>` checks it.
+A copy installed with `fm install-skill` holds this file and each pack's `pack.yaml`, `rules/` and
+`references/`. Authoring a pack happens in the repository: start from `packs/_template/` and check it
+with `fm validate-pack packs/<id>`.

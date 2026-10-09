@@ -13,22 +13,49 @@ One generic **migration engine** plus pluggable **migration packs**. Each pack c
 
 ## Install
 
-Requires Node.js 20.19 or newer.
+Requires Node.js 20.19 or newer, npm and git.
+
+The skill uses the open [Agent Skills](https://agentskills.io) format (a folder with a `SKILL.md`),
+which Claude Code, Codex and Cursor all load. `fm install-skill` copies it to where each one looks:
 
 ```bash
-npm install --save-dev framework-migration-agent-skill
+# In the project you want to migrate: for Claude Code, Codex and Cursor at once
+npx -y -p framework-migration-agent-skill fm install-skill
+
+# Or for one tool, and/or for your user account instead of one project
+npx -y -p framework-migration-agent-skill fm install-skill --client claude   # .claude/skills/
+npx -y -p framework-migration-agent-skill fm install-skill --client codex    # .agents/skills/
+npx -y -p framework-migration-agent-skill fm install-skill --client cursor   # .cursor/skills/
+npx -y -p framework-migration-agent-skill fm install-skill --client codex --user  # $CODEX_HOME/skills (~/.codex/skills)
 ```
 
-The package contains the skill (`skills/framework-migration/SKILL.md`, schemas and packs) and the
-`fm` command-line tool the skill drives.
+| Tool | Project scope | User scope (`--user`) |
+|---|---|---|
+| Claude Code (`--client claude`) | `.claude/skills/` | `~/.claude/skills/` |
+| Codex (`--client codex`) | `.agents/skills/` | `$CODEX_HOME/skills/` (default `~/.codex/skills/`) |
+| Cursor (`--client cursor`) | `.cursor/skills/` | `~/.cursor/skills/` |
+| Any Agent Skills client (`--client agents`) | `.agents/skills/` | `~/.agents/skills/` |
+
+The default, `--client all`, writes `.claude/skills/` and `.agents/skills/`: Claude Code reads the
+first, Codex the second, and Cursor both (it also reads `.claude/skills/` and `.codex/skills/`).
+Commit the folders to share the skill with your team. Running the command again replaces an earlier
+install.
+
+The installed folder holds `SKILL.md` and each pack's `pack.yaml`, `rules/` and `references/`. The
+engine itself is not copied: `SKILL.md` tells the agent to run it with
+`npx -y -p framework-migration-agent-skill@<version> fm`, pinned to the version that installed it, so
+the instructions and the engine always match. From a clone of this repository (for example before a
+release is on npm), install with `npm run fm -- install-skill --project <dir>`; the agent then runs
+the engine from the clone with `npm run fm --`.
 
 ## Usage
 
 ### As an Agent Skill
 
-Copy (or symlink) `skills/framework-migration/` into your agent's skills directory, for example
-`~/.claude/skills/framework-migration/` for Claude Code. Then ask the agent to migrate the project,
-for example *"migrate this Express app to TypeScript"*. [`SKILL.md`](skills/framework-migration/SKILL.md)
+Ask the agent to migrate the project, for example *"migrate this Express app to TypeScript"* or
+*"upgrade this app to Express 5"*: each tool loads the skill when the request matches its
+description. To call it explicitly, type `/framework-migration` in Claude Code or Cursor, or
+`$framework-migration` in Codex. [`SKILL.md`](skills/framework-migration/SKILL.md)
 tells the agent how to pick a pack and run the staged workflow:
 
 1. **Baseline** — clean git tree, inventory, findings, existing tests must pass.
@@ -39,7 +66,8 @@ tells the agent how to pick a pack and run the staged workflow:
 3. **Report** — `MIGRATION_REPORT.md` with per-stage results, manual items (file:line and fix hint)
    and rollback commits.
 
-The skill runs the engine with `npx -p framework-migration-agent-skill fm <command>`.
+The agent needs a shell with Node.js, npm and network access to run the engine; all three tools
+provide one when running locally.
 
 ### The `fm` command
 

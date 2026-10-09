@@ -20,6 +20,8 @@ export function skillDir(): string {
 }
 
 export const schemasDir = (): string => join(skillDir(), "schemas");
+/** The package root (package.json): two levels above the skill directory. */
+export const packageRoot = (): string => join(skillDir(), "..", "..");
 export const packsDir = (): string => join(skillDir(), "packs");
 
 /** Directories never scanned in a target project. */

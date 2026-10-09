@@ -283,3 +283,24 @@ from `devDependencies` to `dependencies` so the published package can run the co
 A lint gate passes for a configuration that lints nothing. The pack declares both `lint` and `test`
 checks, and every fixture's test suite lints deliberately bad samples through the ESLint API and
 asserts the rule ids, ignores and file coverage. The same tests run on ESLint 8 and 9.
+
+## Cross-client use (Claude Code, Codex, Cursor)
+
+### D35. One skill folder in the Agent Skills format, installed per client by `fm install-skill`
+Requested by the repo owner. Claude Code, Codex and Cursor all load the open Agent Skills format
+(a folder named after the skill with a `SKILL.md`; spec at agentskills.io, source in
+`agentskills/agentskills`), so the skill needs no per-client variant. They differ in where they
+look, verified from each source: Claude Code docs (`.claude/skills/`, `~/.claude/skills/`), the Codex
+source (`$CODEX_HOME/skills`, default `~/.codex/skills`; repository `.codex/skills/` and
+`.agents/skills/`), and Cursor's docs as found through search, since cursor.com was blocked
+(`.cursor/skills/`, `.agents/skills/`, user-level equivalents; it also reads `.claude/skills/` and
+`.codex/skills/`). `fm install-skill --client claude|codex|cursor|agents|all [--user]` copies the skill
+there; `all` writes `.claude/skills/` and `.agents/skills/`, which covers all three. It only replaces a
+folder it installed itself (marker file `.fm-install.json`).
+
+### D36. The installed skill runs the engine from npm at a pinned version
+An installed copy contains `SKILL.md` and each pack's `pack.yaml`, `rules/` and `references/` — what
+the agent reads. The engine runs with `npx -y -p framework-migration-agent-skill@<version> fm`,
+pinned in `SKILL.md`; a unit test fails when that version differs from package.json, so a release
+bumps both. Another test checks the frontmatter against the spec's constraints. `SKILL.md` gained
+the optional `license` and `compatibility` fields, and its wording names no client-specific tools.
