@@ -28,6 +28,19 @@ export interface PackStage {
 
 export type CheckName = "typecheck" | "test" | "lint" | "smoke";
 
+export interface SmokeProbe {
+  start: string;
+  url: string;
+  timeout_ms?: number;
+}
+
+export interface PackChecks {
+  typecheck?: string;
+  test?: string;
+  lint?: string;
+  smoke?: string | SmokeProbe;
+}
+
 export interface PackManifest {
   id: string;
   title: string;
@@ -38,7 +51,7 @@ export interface PackManifest {
   to: StackRef;
   tools: PackTool[];
   stages: PackStage[];
-  checks: Partial<Record<CheckName, string>>;
+  checks: PackChecks;
 }
 
 export interface Pack extends PackManifest {

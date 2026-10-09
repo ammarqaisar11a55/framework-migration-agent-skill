@@ -1,14 +1,16 @@
 #!/usr/bin/env node
-import { realpathSync } from "node:fs";
+import { realpathSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { resolve } from "node:path";
 import { artifactPath, writeJson } from "./artifacts.ts";
+import { runChecks } from "./check.ts";
 import { detect } from "./detect.ts";
 import { detectStack, matchPacks } from "./detect-stack.ts";
 import { buildInventory } from "./inventory.ts";
 import { findPack, listPacks, validatePack } from "./pack.ts";
-import { runStage } from "./run-codemod.ts";
+import { collectReportData, renderReport } from "./report.ts";
+import { runStage, stageNumber } from "./run-codemod.ts";
 import { validate } from "./schema.ts";
 
 export interface CliResult {
@@ -28,9 +30,7 @@ export interface Command {
   name: string;
   usage: string;
   summary: string;
-  /** Milestone in PLAN.md that implements the command. */
-  milestone: string;
-  handler?: Handler;
+  handler: Handler;
 }
 
 const ok = (stdout: string): CliResult => ({ exitCode: 0, stdout, stderr: "" });
@@ -130,14 +130,40 @@ const runCodemodCommand: Handler = async ({ positionals, values }) => {
   return result.ok ? ok(lines.join("\n")) : fail(lines.join("\n"));
 };
 
+const checkCommand: Handler = async ({ positionals, values }) => {
+  const pack = packOption(values);
+  const raw = values["stage"];
+  if (typeof raw !== "string") return fail("fm check: missing --stage <n> (0 = baseline)", 2);
+  const stage = raw === "baseline" ? 0 : /^\d+$/.test(raw) ? Number(raw) : stageNumber(pack, raw);
+  const root = resolve(positionals[0] ?? ".");
+  const result = await runChecks(root, pack, stage, { allowDirty: values["allow-dirty"] === true });
+  const lines = [`Stage ${result.stage} (${result.stageId}) — gate ${result.gate.passed ? "passed" : "FAILED"}`];
+  for (const check of result.checks) {
+    const counts = check.tests === undefined ? "" : ` — ${check.tests.passed} passed, ${check.tests.failed} failed`;
+    lines.push(`  ${check.name.padEnd(9)} ${check.status}${counts}  (${check.command})`);
+  }
+  for (const reason of result.gate.reasons) lines.push(`  gate: ${reason}`);
+  for (const warning of result.warnings) lines.push(`  warning: ${warning}`);
+  for (const check of result.checks.filter((c) => c.status === "fail")) lines.push("", `--- ${check.name} output ---`, check.output);
+  lines.push(`Wrote ${artifactPath(root, "checks", `stage-${result.stage}.json`)}`);
+  return result.gate.passed ? ok(lines.join("\n")) : fail(lines.join("\n"));
+};
+
+const reportCommand: Handler = ({ positionals, values }) => {
+  const root = resolve(positionals[0] ?? ".");
+  const out = typeof values["out"] === "string" ? resolve(values["out"]) : join(root, "MIGRATION_REPORT.md");
+  writeFileSync(out, renderReport(collectReportData(root, packOption(values))));
+  return ok(`Wrote ${out}`);
+};
+
 export const COMMANDS: readonly Command[] = [
-  { name: "validate-pack", usage: "validate-pack <path>", summary: "Validate a pack directory against the schemas", milestone: "M2", handler: validatePackCommand },
-  { name: "detect-stack", usage: "detect-stack [dir]", summary: "Detect language, framework and version from manifests", milestone: "M3", handler: detectStackCommand },
-  { name: "inventory", usage: "inventory [dir] [--out <file>]", summary: "Build inventory.json (files, dependency graph, entry points, risk)", milestone: "M3", handler: inventoryCommand },
-  { name: "detect", usage: "detect --pack <id> [dir] [--out <file>]", summary: "Run a pack's rules and write findings.json", milestone: "M4", handler: detectCommand },
-  { name: "run-codemod", usage: "run-codemod --pack <id> --stage <id> (--dry-run | --apply) [--skip-commands] [dir]", summary: "Run a stage's codemods; dry-run writes patches", milestone: "M4", handler: runCodemodCommand },
-  { name: "check", usage: "check --pack <id> --stage <n> [dir]", summary: "Run a pack's compatibility checks against the baseline", milestone: "M5" },
-  { name: "report", usage: "report --pack <id> [dir]", summary: "Generate MIGRATION_REPORT.md", milestone: "M5" },
+  { name: "validate-pack", usage: "validate-pack <path>", summary: "Validate a pack directory against the schemas", handler: validatePackCommand },
+  { name: "detect-stack", usage: "detect-stack [dir]", summary: "Detect language, framework and version from manifests", handler: detectStackCommand },
+  { name: "inventory", usage: "inventory [dir] [--out <file>]", summary: "Build inventory.json (files, dependency graph, entry points, risk)", handler: inventoryCommand },
+  { name: "detect", usage: "detect --pack <id> [dir] [--out <file>]", summary: "Run a pack's rules and write findings.json", handler: detectCommand },
+  { name: "run-codemod", usage: "run-codemod --pack <id> --stage <id> (--dry-run | --apply) [--skip-commands] [dir]", summary: "Run a stage's codemods; dry-run writes patches", handler: runCodemodCommand },
+  { name: "check", usage: "check --pack <id> --stage <n|id> [--allow-dirty] [dir]", summary: "Run a pack's compatibility checks against the baseline", handler: checkCommand },
+  { name: "report", usage: "report --pack <id> [dir] [--out <file>]", summary: "Generate MIGRATION_REPORT.md", handler: reportCommand },
 ];
 
 export function usage(): string {
@@ -153,7 +179,7 @@ const OPTIONS = {
   out: { type: "string" },
   "dry-run": { type: "boolean" },
   apply: { type: "boolean" },
-  baseline: { type: "boolean" },
+  "allow-dirty": { type: "boolean" },
   "skip-commands": { type: "boolean" },
   json: { type: "boolean" },
 } as const;
@@ -163,9 +189,6 @@ export async function run(argv: readonly string[]): Promise<CliResult> {
   if (name === undefined || name === "help" || name === "--help" || name === "-h") return ok(usage());
   const command = COMMANDS.find((c) => c.name === name);
   if (command === undefined) return fail(`fm: unknown command "${name}"\n\n${usage()}`, 2);
-  if (command.handler === undefined) {
-    return fail(`fm: "${command.name}" is not implemented yet (planned for ${command.milestone})`);
-  }
   let args: Args;
   try {
     args = parseArgs({ args: rest, options: OPTIONS, allowPositionals: true });

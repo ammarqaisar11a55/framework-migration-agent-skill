@@ -150,7 +150,37 @@
           "type": "string"
         },
         "smoke": {
-          "type": "string"
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "description": "Command that exits 0 when the app boots."
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "start",
+                "url"
+              ],
+              "properties": {
+                "start": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Command that starts the app. PORT is set to a free port."
+                },
+                "url": {
+                  "type": "string",
+                  "pattern": "^https?://",
+                  "description": "Probed until it answers 2xx. {port} is replaced with the chosen port."
+                },
+                "timeout_ms": {
+                  "type": "integer",
+                  "minimum": 1000
+                }
+              }
+            }
+          ]
         }
       }
     }
