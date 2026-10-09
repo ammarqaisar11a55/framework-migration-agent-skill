@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "allowImportingTsExtensions": false,
+    "rewriteRelativeImportExtensions": true,
+    "rootDir": "skills/framework-migration",
+    "outDir": "dist",
+    "declaration": false,
+    "sourceMap": false
+  },
+  "include": ["skills/framework-migration/engine", "skills/framework-migration/adapters"],
+  "exclude": ["node_modules", "**/fixtures/**", "**/*.test.ts"]
+}

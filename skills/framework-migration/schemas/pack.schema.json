@@ -1,0 +1,6 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ammarqaisar11a55/framework-migration-agent-skill/schemas/pack.schema.json",
+  "title": "pack",
+  "description": "Placeholder — defined in M2 (see PLAN.md §8)."
+}

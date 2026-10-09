@@ -1,0 +1,52 @@
+{
+  "name": "framework-migration-agent-skill",
+  "version": "0.1.0",
+  "description": "Agent Skill: a generic migration engine plus pluggable packs for migrating apps between frameworks and major versions.",
+  "keywords": ["agent-skill", "claude", "migration", "codemod", "framework-migration"],
+  "license": "MIT",
+  "author": "Muhammad Ammar Qaisar",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ammarqaisar11a55/framework-migration-agent-skill.git"
+  },
+  "homepage": "https://github.com/ammarqaisar11a55/framework-migration-agent-skill#readme",
+  "bugs": {
+    "url": "https://github.com/ammarqaisar11a55/framework-migration-agent-skill/issues"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "bin": {
+    "fm": "dist/engine/cli.js"
+  },
+  "files": [
+    "dist",
+    "skills/framework-migration/SKILL.md",
+    "skills/framework-migration/schemas",
+    "skills/framework-migration/packs",
+    "!**/.gitkeep"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "fm": "tsx skills/framework-migration/engine/cli.ts",
+    "build": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json",
+    "prepack": "npm run build",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "20.19.43",
+    "eslint": "10.12.0",
+    "globals": "17.13.0",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.1",
+    "vitest": "4.1.11"
+  }
+}
