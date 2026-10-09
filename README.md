@@ -6,8 +6,8 @@ way to migrate an application from one framework (or major version) to another.
 One generic **migration engine** plus pluggable **migration packs**. Each pack covers exactly one
 `source → target` path; adding a framework means adding a pack, not changing the engine.
 
-> **Status:** early scaffold (milestone M1 of [PLAN.md](PLAN.md)). The `fm` commands are declared
-> but not implemented yet, and no pack has shipped.
+> **Status:** the engine and the pilot pack `express-js-to-ts` are complete (milestones M1–M7 of
+> [PLAN.md](PLAN.md)); see the [eval scorecard](evals/scorecard.md). The other packs are planned.
 
 ## Install
 
@@ -22,19 +22,52 @@ The package contains the skill (`skills/framework-migration/SKILL.md`, schemas a
 
 ## Usage
 
+### As an Agent Skill
+
+Copy (or symlink) `skills/framework-migration/` into your agent's skills directory, for example
+`~/.claude/skills/framework-migration/` for Claude Code. Then ask the agent to migrate the project,
+for example *"migrate this Express app to TypeScript"*. [`SKILL.md`](skills/framework-migration/SKILL.md)
+tells the agent how to pick a pack and run the staged workflow:
+
+1. **Baseline** — clean git tree, inventory, findings, existing tests must pass.
+2. **Stages from the pack** — dry-run each stage's codemods, read the diff, apply, then check
+   type-check, tests (at baseline parity) and a smoke boot. One commit per stage
+   (`migrate(<pack>): stage <n> <id>`), so every stage is a rollback point. A failed gate stops
+   the migration.
+3. **Report** — `MIGRATION_REPORT.md` with per-stage results, manual items (file:line and fix hint)
+   and rollback commits.
+
+The skill runs the engine with `npx -p framework-migration-agent-skill fm <command>`.
+
+### The `fm` command
+
 ```bash
-npx fm --help
+npx -p framework-migration-agent-skill fm --help
 ```
 
-| Command | Purpose | Output |
+| Command | Purpose | Output (in `.fm/`) |
 |---|---|---|
 | `fm validate-pack <path>` | Validate a pack against the schemas | — |
-| `fm detect-stack` | Detect language, framework and version from manifests | — |
-| `fm inventory` | File and dependency graph, entry points, per-file risk | `inventory.json` |
-| `fm detect` | Run a pack's deprecated-API rules | `findings.json` |
-| `fm run-codemod` | Run codemods, dry-run first | `diffs/stage-N/*.patch` |
-| `fm check` | Type-check, tests, lint, smoke boot against the baseline | `checks/stage-N.json` |
-| `fm report` | Staged migration report | `MIGRATION_REPORT.md` |
+| `fm detect-stack [dir]` | Detect language, framework and version from manifests; list matching packs | — |
+| `fm inventory [dir]` | File and dependency graph, entry points, per-file risk | `inventory.json` |
+| `fm detect --pack <id> [dir]` | Run a pack's rules | `findings.json` |
+| `fm run-codemod --pack <id> --stage <id> --dry-run\|--apply [dir]` | Run a stage, dry-run first | `diffs/stage-N/*.patch` |
+| `fm check --pack <id> --stage <n> [dir]` | Type-check, tests, lint, smoke boot against the baseline | `checks/stage-N.json` |
+| `fm report --pack <id> [dir]` | Staged migration report | `MIGRATION_REPORT.md` (project root) |
+
+Example, migrating an Express app by hand with the pilot pack:
+
+```bash
+fm detect-stack .
+fm inventory . && fm detect --pack express-js-to-ts .
+fm check --pack express-js-to-ts --stage 0 .            # baseline
+fm run-codemod --pack express-js-to-ts --stage tooling --dry-run .
+fm run-codemod --pack express-js-to-ts --stage tooling --apply .
+fm check --pack express-js-to-ts --stage 1 .
+git commit -am "migrate(express-js-to-ts): stage 1 tooling"
+# ... repeat for each stage in pack.yaml ...
+fm report --pack express-js-to-ts .
+```
 
 ## Packs
 
@@ -42,7 +75,7 @@ Tier 1 = automated, 2 = partially automated, 3 = assist mode (inventory, finding
 
 | Pack | From → To | Tier | Status |
 |---|---|---|---|
-| `express-js-to-ts` | Express JS → Express TS | 1 | planned (pilot) |
+| [`express-js-to-ts`](skills/framework-migration/packs/express-js-to-ts) | Express JS → Express TS | 1 | shipped (pilot) |
 | `express-4-to-5` | Express 4 → 5 | 1 | planned |
 | `node-cjs-to-esm` | CommonJS → ESM | 1 | planned |
 | `eslint-flat-config` | legacy `.eslintrc` → flat config | 1 | planned |
@@ -98,7 +131,14 @@ without upgrading your system npm).
 npm run lint && npm run typecheck && npm test
 ```
 
-Run the CLI from source with `npm run fm -- <command>`. `npm run build` compiles it to `dist/`,
+Run the CLI from source with `npm run fm -- <command>`. `npm run evals` runs every shipped pack's
+fixtures through the full pipeline and rewrites [`evals/scorecard.md`](evals/scorecard.md)
+(`-- <pack-id>` for one pack, `-- --keep` to keep the work directory in `<tmpdir>/fm-evals`). CI
+(`.github/workflows/evals.yml`) runs lint, typecheck, unit tests, the build and the evals.
+
+New packs start from [`packs/_template/`](skills/framework-migration/packs/_template); a pack is
+`shipped` only with verified `references/official-sources.md`, at least 3 positive and 1 negative
+fixture, and passing evals. `npm run build` compiles it to `dist/`,
 which is what the published package ships.
 
 Design decisions and deviations from the plan are logged in [DECISIONS.md](DECISIONS.md).
