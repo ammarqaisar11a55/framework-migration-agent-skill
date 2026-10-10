@@ -35,7 +35,7 @@ export function skillsDirs(client: Client, scope: Scope, project: string, env: N
     case "claude":
       return [scope === "user" ? user(".claude") : join(project, ".claude", "skills")];
     case "codex":
-      return [scope === "user" ? join(env["CODEX_HOME"] ?? join(home, ".codex"), "skills") : join(project, ".agents", "skills")];
+      return [scope === "user" ? join(env["CODEX_HOME"] || join(home, ".codex"), "skills") : join(project, ".agents", "skills")];
     case "cursor":
       return [scope === "user" ? user(".cursor") : join(project, ".cursor", "skills")];
     case "agents":

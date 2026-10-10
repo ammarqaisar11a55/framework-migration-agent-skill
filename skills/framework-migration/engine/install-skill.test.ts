@@ -47,6 +47,8 @@ describe("install-skill", () => {
     expect(dirs("codex", "project")).toEqual(["/p/.agents/skills"]);
     expect(dirs("codex", "user")).toEqual(["/h/.codex/skills"]);
     expect(dirs("codex", "user", { CODEX_HOME: "/c" })).toEqual(["/c/skills"]);
+    // Set but empty (`CODEX_HOME= fm ...`) is not a directory: use the default, not the current one.
+    expect(dirs("codex", "user", { CODEX_HOME: "" })).toEqual(["/h/.codex/skills"]);
     expect(dirs("cursor", "project")).toEqual(["/p/.cursor/skills"]);
     expect(dirs("cursor", "user")).toEqual(["/h/.cursor/skills"]);
     expect(dirs("all", "project")).toEqual(["/p/.claude/skills", "/p/.agents/skills"]);
