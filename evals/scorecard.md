@@ -11,8 +11,11 @@ without a smoke probe either, that the test run loaded the migrated modules.
 | `eslint-flat-config` | 4 | 100% | 100% | 100% | 100% | 0 |
 | `express-4-to-5` | 5 | 100% | 100% | 100% | 100% | 5 |
 | `express-js-to-ts` | 5 | 100% | 100% | 100% | 100% | 5 |
+| `javax-to-jakarta` | 4 | 100% | 100% | 100% | 100% | 3 |
+| `junit-4-to-5` | 4 | 100% | 100% | 100% | 100% | 3 |
 | `nextjs-major-upgrade` | 4 | 100% | 100% | 100% | 100% | 3 |
 | `node-cjs-to-esm` | 4 | 100% | 100% | 100% | 100% | 7 |
+| `php-7-to-8` | 4 | 100% | 100% | 100% | 100% | 4 |
 | `pydantic-1-to-2` | 4 | 100% | 100% | 100% | 100% | 12 |
 | `react-major-upgrade` | 4 | 100% | 100% | 100% | 100% | 7 |
 | `svelte-4-to-5` | 4 | 100% | 100% | 100% | 100% | 4 |
@@ -65,6 +68,24 @@ without a smoke probe either, that the test run loaded the migrated modules.
 | 04-mixed-cjs-esm | positive | yes | 4/4 yes | 10 / 0 / 0 | — | yes | 0 |
 | 05-dynamic-require | negative | yes | 6/6 yes | 19 / 0 / 0 | yes | yes | 5 |
 
+## javax-to-jakarta
+
+| Fixture | Kind | Compiles | Tests (after/baseline) | Findings TP / FP / FN | Negative patterns kept | Matches after/ | Manual items |
+|---|---|---|---|---|---|---|---|
+| 01-bean-validation | positive | yes | 3/3 yes | 9 / 0 / 0 | — | yes | 0 |
+| 02-jaxb | positive | yes | 2/2 yes | 9 / 0 / 0 | — | yes | 0 |
+| 03-json-and-inject | positive | yes | 2/2 yes | 7 / 0 / 0 | — | yes | 0 |
+| 04-jdk-javax-and-strings | negative | yes | 3/3 yes | 3 / 0 / 0 | yes | yes | 3 |
+
+## junit-4-to-5
+
+| Fixture | Kind | Compiles | Tests (after/baseline) | Findings TP / FP / FN | Negative patterns kept | Matches after/ | Manual items |
+|---|---|---|---|---|---|---|---|
+| 01-assertions-and-lifecycle | positive | yes | 3/3 yes | 8 / 0 / 0 | — | yes | 0 |
+| 02-rules-and-parameterized | positive | yes | 7/7 yes | 7 / 0 / 0 | — | yes | 0 |
+| 03-mockito-runner | positive | yes | 2/2 yes | 5 / 0 / 0 | — | yes | 0 |
+| 04-custom-rule | negative | yes | 3/3 yes | 5 / 0 / 0 | yes | yes | 3 |
+
 ## nextjs-major-upgrade
 
 | Fixture | Kind | Compiles | Tests (after/baseline) | Findings TP / FP / FN | Negative patterns kept | Matches after/ | Manual items |
@@ -82,6 +103,15 @@ without a smoke probe either, that the test run loaded the migrated modules.
 | 02-shapes-and-packages | positive | yes | 4/4 yes | 13 / 0 / 0 | — | yes | 0 |
 | 03-entry-lazy-dotenv | positive | yes | 4/4 yes | 19 / 0 / 0 | — | yes | 3 |
 | 04-unconvertible | negative | yes | 4/4 yes | 20 / 0 / 0 | yes | yes | 4 |
+
+## php-7-to-8
+
+| Fixture | Kind | Compiles | Tests (after/baseline) | Findings TP / FP / FN | Negative patterns kept | Matches after/ | Manual items |
+|---|---|---|---|---|---|---|---|
+| 01-string-helpers | positive | yes | 3/3 yes | 4 / 0 / 0 | — | yes | 0 |
+| 02-classes-and-types | positive | yes | 4/4 yes | 1 / 0 / 0 | — | yes | 0 |
+| 03-arrays-and-closures | positive | yes | 3/3 yes | 2 / 0 / 0 | — | yes | 0 |
+| 04-later-deprecations | negative | yes | 4/4 yes | 4 / 0 / 0 | yes | yes | 4 |
 
 ## pydantic-1-to-2
 
