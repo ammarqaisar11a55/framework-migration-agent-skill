@@ -2,7 +2,7 @@
 name: framework-migration
 description: Use when migrating an application between frameworks or languages, upgrading to a new major version, replacing deprecated APIs, or producing a staged migration report. Runs a gated, commit-per-stage workflow driven by pluggable migration packs.
 license: MIT
-compatibility: Needs a shell with Node.js 20.19+ and npm/npx, git, and network access to the npm registry (and GitHub for packs that run official tools from source); Python packs also need Python 3.10+ with venv and PyPI access. Works in any Agent Skills client, such as Claude Code, Codex and Cursor.
+compatibility: Needs a shell with Node.js 20.19+ and npm/npx, git, and network access to the npm registry (and GitHub for packs that run official tools from source); Python packs also need Python 3.10+ with venv and PyPI access; JVM packs a JDK 17+ and Maven with Maven Central access; PHP packs PHP 8 and Composer with Packagist access. Works in any Agent Skills client, such as Claude Code, Codex and Cursor.
 ---
 
 # Framework migration

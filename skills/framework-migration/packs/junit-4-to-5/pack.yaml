@@ -1,0 +1,32 @@
+id: junit-4-to-5
+title: JUnit 4 → JUnit 5 (Jupiter)
+ecosystem: jvm
+tier: 1
+status: shipped
+
+from: { framework: junit, versions: "4.x" }
+to:   { framework: junit, versions: "5.x" }
+
+tools:
+  # Invoked by full coordinates by codemods/openrewrite.mjs; nothing is added to the project's pom.
+  - { name: "org.openrewrite.maven:rewrite-maven-plugin", version: "6.46.1", role: engine }
+  - { name: "org.openrewrite.recipe:rewrite-testing-frameworks", version: "3.44.0", role: engine }
+  # Added by finish-junit5.js: Hamcrest when test code uses it (JUnit 4 brought it transitively);
+  # JUnit 4 and the Vintage engine when test classes stay on JUnit 4 (custom rules). The Vintage
+  # engine matches the junit-jupiter version the recipe sets.
+  - { name: "org.hamcrest:hamcrest", version: "3.0", role: devDependency }
+  - { name: "junit:junit", version: "4.13.2", role: devDependency }
+  - { name: "org.junit.vintage:junit-vintage-engine", version: "5.14.4", role: devDependency }
+
+stages:
+  - id: junit-5
+    title: Run OpenRewrite's JUnit4to5Migration (dependencies, annotations, assertions, rules, runners)
+    commands:
+      - run: "node {pack_dir}/codemods/junit5.mjs"
+        dry_run: "node {pack_dir}/codemods/junit5.mjs --dry-run"
+    codemods: [finish-junit5.js]
+    fix_rules: true
+
+checks:
+  typecheck: "mvn -B -q test-compile"
+  test: "mvn -B test"

@@ -31,4 +31,10 @@ function detect(project: ProjectView): Stack[] {
   return [stack];
 }
 
-export const phpAdapter: Adapter = { ecosystem: "php", languages: { ".php": "php" }, detect };
+export const phpAdapter: Adapter = {
+  ecosystem: "php",
+  languages: { ".php": "php" },
+  detect,
+  install: "composer install --no-interaction --no-progress --quiet",
+  binDirs: ["vendor/bin"],
+};

@@ -16,7 +16,7 @@ import { runChecks, type StageCheck } from "../skills/framework-migration/engine
 import { detect } from "../skills/framework-migration/engine/detect.ts";
 import { exec } from "../skills/framework-migration/engine/exec.ts";
 import { listPacks, loadFixtures, validatePack, type Fixture } from "../skills/framework-migration/engine/pack.ts";
-import { IGNORED_DIRS, walk } from "../skills/framework-migration/engine/paths.ts";
+import { walk } from "../skills/framework-migration/engine/paths.ts";
 import { runStage } from "../skills/framework-migration/engine/run-codemod.ts";
 import type { Finding, Pack } from "../skills/framework-migration/engine/types.ts";
 
@@ -46,9 +46,15 @@ interface PackScore {
 
 const key = (f: { rule: string; file: string; line: number }): string => `${f.rule} ${f.file}:${f.line}`;
 
-// Build output (.next, dist, ...) is what the checks produce, not what the migration wrote.
-const IGNORED = new Set([...IGNORED_DIRS, "package-lock.json"]);
-const tree = (root: string): Map<string, string> => new Map(walk(root, IGNORED).map((path) => [path, readFileSync(join(root, path), "utf8")]));
+// Build output (.next, dist, ...) is what the checks produce, not what the migration wrote; lock
+// files are what the install resolved.
+const IGNORED_FILES = new Set(["package-lock.json", "composer.lock"]);
+const tree = (root: string): Map<string, string> =>
+  new Map(
+    walk(root)
+      .filter((path) => !IGNORED_FILES.has(path.split("/").pop() ?? ""))
+      .map((path) => [path, readFileSync(join(root, path), "utf8")]),
+  );
 
 type Manifest = { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
 
@@ -181,7 +187,18 @@ async function scoreFixture(pack: Pack, fixture: Fixture, depsDir: string, isola
   const want = tree(join(fixture.dir, "after"));
   const got = tree(work);
   const differing = [...new Set([...want.keys(), ...got.keys()])].filter((path) => want.get(path) !== got.get(path)).sort();
-  if (differing.length > 0) problems.push(`differs from after/: ${differing.join(", ")}`);
+  if (differing.length > 0) {
+    problems.push(`differs from after/: ${differing.join(", ")}`);
+    // The diff itself, so a failure on CI shows what changed (after/ vs the migrated tree).
+    const diffs = differing.map(
+      (path) =>
+        exec(`git diff --no-index --no-color -- ${JSON.stringify(join(fixture.dir, "after", path))} ${JSON.stringify(join(work, path))}`, {
+          cwd: work,
+        }).output,
+    );
+    const lines = diffs.join("").split("\n");
+    problems.push(`diff after/ → migrated:\n${lines.slice(0, 120).join("\n")}${lines.length > 120 ? `\n... ${lines.length - 120} more lines` : ""}`);
+  }
   if (falsePositives.length > 0) problems.push(`unexpected findings: ${falsePositives.join(", ")}`);
   if (falseNegatives.length > 0) problems.push(`missing findings: ${falseNegatives.join(", ")}`);
 

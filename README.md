@@ -14,7 +14,8 @@ One generic **migration engine** plus pluggable **migration packs**. Each pack c
 ## Install
 
 Requires Node.js 20.19 or newer, npm and git. Python packs also need Python 3.10+ with `venv`;
-run them with the project's virtualenv active.
+run them with the project's virtualenv active. JVM packs need a JDK (17+) and Maven;
+PHP packs need PHP 8 and Composer, with the project's dependencies installed (`composer install`).
 
 The skill uses the open [Agent Skills](https://agentskills.io) format (a folder with a `SKILL.md`),
 which Claude Code, Codex and Cursor all load. `fm install-skill` copies it to where each one looks:
@@ -117,11 +118,11 @@ Tier 1 = automated, 2 = partially automated, 3 = assist mode (inventory, finding
 | [`tailwind-3-to-4`](skills/framework-migration/packs/tailwind-3-to-4) | Tailwind v3 → v4 | 1 | shipped |
 | [`django-major-upgrade`](skills/framework-migration/packs/django-major-upgrade) | Django 4.2 → 5.2 (LTS) | 1 | shipped |
 | [`pydantic-1-to-2`](skills/framework-migration/packs/pydantic-1-to-2) | Pydantic v1 → v2 | 1 | shipped |
-| `javax-to-jakarta` | Java EE → Jakarta EE | 1 | planned |
+| [`javax-to-jakarta`](skills/framework-migration/packs/javax-to-jakarta) | Java EE (javax) → Jakarta EE 10 | 1 | shipped |
 | `spring-boot-2-to-3` | Spring Boot 2 → 3 | 1 | planned |
 | `java-lts-upgrade` | Java 8 → 11 → 17 → 21 | 1 | planned |
-| `junit-4-to-5` | JUnit 4 → 5 | 1 | planned |
-| `php-7-to-8` | PHP 7.x → 8.x | 1 | planned |
+| [`junit-4-to-5`](skills/framework-migration/packs/junit-4-to-5) | JUnit 4 → 5 | 1 | shipped |
+| [`php-7-to-8`](skills/framework-migration/packs/php-7-to-8) | PHP 7.x → 8.x | 1 | shipped |
 | `laravel-major-upgrade` | Laravel majors | 1 | planned |
 | `flutter-dart-upgrade` | Flutter / Dart versions | 1 | planned |
 | `jest-to-vitest` | Jest → Vitest | 2 | planned |

@@ -487,3 +487,56 @@ migration guide gives for code v2 rejects at import time: `allow_mutation=False`
 and adds pydantic-settings when the code imports it. Deprecated methods (`parse_obj`, `.dict()`,
 ...) still work in v2 and are reported, not renamed: `.dict()` and `.copy()` cannot be told apart
 from dict and list methods by pattern.
+
+## M9 — JVM packs (`junit-4-to-5`, `javax-to-jakarta`)
+
+### D61. OpenRewrite runs through the Maven plugin's coordinates, Maven only
+The OpenRewrite docs show running a recipe without editing the build:
+`mvn org.openrewrite.maven:rewrite-maven-plugin:<v>:run -Drewrite.recipeArtifactCoordinates=...
+-Drewrite.activeRecipes=...`. `openrewrite.mjs` (copied into each JVM pack) does that with the plugin
+and recipe module pinned in pack.yaml; `--dry-run` uses the `dryRun` goal and prints its patch, so
+no scratch copy is needed. Gradle builds get the recipe and module to run with OpenRewrite's Gradle
+plugin, and the stage stops: no Gradle fixture verifies an init-script path. The JVM adapter needs no
+install step (the checks build the project); CI sets up Temurin 21 with a Maven cache. Tool versions
+accept Maven qualifiers (`8.0.5.Final`).
+
+### D62. JUnit: classes with custom rules stay on JUnit 4 under the Vintage engine
+`JUnit4to5Migration` converts known rules and moves every `@Test` to Jupiter, where `@Rule` is
+ignored: a custom rule then silently stops applying, or the class stops compiling once `junit:junit`
+is removed. `junit5.mjs` excludes classes that implement or use custom rules
+(`-Drewrite.exclusions`); `finish-junit5.js` keeps `junit:junit` and adds `junit-vintage-engine`, the
+JUnit user guide's way to run JUnit 4 tests on the Platform, and adds Hamcrest, which JUnit 4 provided
+transitively and the recipe's own `ExpectedException` rewrite uses. Rules reading auto-fixable JUnit
+4 constructs skip the kept files (shared through a YAML anchor; rule files accept `x-` keys for it).
+
+### D63. Jakarta: the recipe moves APIs, the pack moves implementations and pins versions
+`JakartaEE10` renames packages and API artifacts but leaves the implementations that read those
+APIs, which then fail at run time (no validation provider, JSON-P provider not found, Guice ignoring
+`jakarta.inject`). `jakarta-implementations.js` replaces the ones it knows (Hibernate Validator,
+GlassFish EL / JSON-P / JAXB runtime, Guice) and two API artifacts the recipe sometimes leaves, and
+pins the API versions the recipe picks as "newest 3.0.x" at run time — its output varied with Maven
+Central's rate limiting during development.
+
+## M9 — PHP packs (`php-7-to-8`)
+
+### D64. PHP 7 → 8 targets 8.0 with Rector's sets, and reports later deprecations
+`rector.mjs` installs the pinned `rector/rector` with Composer into the cache (the project's
+composer.json is untouched) and runs a generated config: `withPhpSets(php80: true)`, every upgrade
+set up to 8.0, and `withPhpVersion(PhpVersion::PHP_80)`. Without the explicit version Rector reads
+it from composer.json — still 7.x before the stage — and skips every rule that needs PHP 8 syntax.
+Targeting 8.0, not the newest 8.x, keeps the result valid on every PHP 8 release; deprecations from
+8.1–8.2 (`strftime`, `utf8_encode`, `"${var}"`, `FILTER_SANITIZE_STRING`) and the behaviour changes
+no pattern can fix safely (loose comparisons with 0, `is_resource()` on handles that became objects)
+are manual findings. `require-php8.js` then requires `^8.0` in composer.json. The PHP adapter
+installs fixtures with `composer install` and puts `vendor/bin` on PATH; the checks are `php -l` on
+every file and `phpunit`. CI uses the PHP 8.3 and Composer preinstalled on GitHub's Ubuntu runner,
+so the fixtures' baselines run on PHP 8, not 7 (the evals check the migrated code, not that the
+original ran on 7).
+
+### D65. Evals run without global formatters
+`ng update` formats changed files with any Prettier it can resolve (including through `NODE_PATH`),
+and `makemigrations` runs `black` when it is on PATH. A development machine with either installed
+globally produces differently formatted `after/` trees than CI's runner, which has neither; the
+Angular and Django fixtures failed on CI for that reason alone. `after/` trees are generated in an
+environment like CI's (no global Prettier, black or `NODE_PATH`), and the evals print the diff of any
+file that differs from `after/`, so a mismatch on CI shows its cause.

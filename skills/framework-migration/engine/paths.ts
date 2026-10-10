@@ -28,7 +28,7 @@ export const packsDir = (): string => join(skillDir(), "packs");
 export const IGNORED_DIRS = new Set([
   // Not "bin": Node packages keep CLI sources there. .NET build output in bin/ holds no source files.
   "node_modules", ".git", ".fm", "dist", "build", "built", "out", "coverage", "vendor", "target", "obj",
-  ".venv", "venv", "__pycache__", ".pytest_cache", ".mypy_cache", ".tox", ".dart_tool", ".gradle", ".next", ".nuxt", ".svelte-kit", ".angular",
+  ".venv", "venv", "__pycache__", ".pytest_cache", ".mypy_cache", ".tox", ".dart_tool", ".gradle", ".next", ".nuxt", ".svelte-kit", ".angular", ".phpunit.cache",
 ]);
 
 /** Project-relative, forward-slash paths of every file under root, sorted. */

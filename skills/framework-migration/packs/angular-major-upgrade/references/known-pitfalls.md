@@ -37,3 +37,8 @@ Run the project's formatter after the stage if it has one.
 the target (for example an `@ngrx/*` or `@angular-eslint/*` version for the previous major). Update
 those with `ng update <package>@<major>` in the same command, or wait for a compatible release;
 `@angular/material` and `@angular/cdk` are included automatically.
+
+**Formatting depends on Prettier.** `ng update` formats the files its migrations change with Prettier
+when the project can resolve it (`require.resolve("prettier")` from the workspace, which includes
+`NODE_PATH`). Without Prettier the migrated files keep their quotes and line breaks. Commit the
+project's own formatting after the stage if the diff is noisy.

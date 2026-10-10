@@ -1,0 +1,52 @@
+# Java EE APIs under javax.* that Jakarta EE 9+ renamed to jakarta.*. Packages of the JDK itself
+# (javax.crypto, javax.net, javax.sql, javax.swing, javax.naming, javax.management, javax.xml.parsers,
+# ...) are not Java EE and stay. Source: the Jakarta EE 9 release plan's namespace change and
+# OpenRewrite's JakartaEE10 recipe (references/official-sources.md).
+
+exclude: ['(^|/)(target|build)/']
+
+rules:
+  - id: javax-ee-imports
+    description: "Imports of Java EE packages (javax.validation, javax.xml.bind, javax.json, javax.inject, javax.servlet, javax.persistence, ...), renamed to jakarta.* in Jakarta EE 9."
+    matcher:
+      type: regex
+      pattern: '^import\s+(static\s+)?javax\.(validation|xml\.bind|json|inject|servlet|persistence|ws\.rs|ejb|enterprise|transaction|faces|jms|mail|websocket|activation|batch|el|interceptor|decorator|xml\.ws|jws|resource|security\.enterprise|annotation\.(PostConstruct|PreDestroy|Resource|Resources|Generated|Priority|ManagedBean|security))\b'
+    extensions: [".java", ".kt"]
+    severity: error
+    auto_fixable: true
+    fix_hint: "Renamed to jakarta.* by the JakartaEE10 recipe."
+    docs_url: https://jakarta.ee/blogs/javax-jakartaee-namespace-ecosystem-progress/
+
+  - id: javax-ee-dependency
+    description: "Java EE API artifacts (javax.validation:validation-api, javax.xml.bind:jaxb-api, javax.json:javax.json-api, javax.inject:javax.inject, javax.servlet:javax.servlet-api, ...)."
+    matcher:
+      type: regex
+      pattern: '<groupId>\s*javax\.(validation|xml\.bind|json|inject|servlet|persistence|annotation|ws\.rs|ejb|enterprise|transaction|faces|jms|mail|websocket|activation|el)\s*</groupId>'
+    extensions: [".xml"]
+    exclude: ['^(?!(.*/)?pom\.xml$)']
+    severity: error
+    auto_fixable: true
+    fix_hint: "Replaced with the jakarta.* API at its Jakarta EE 10 version by the recipe and jakarta-implementations.js; the implementations that read those APIs (Hibernate Validator, EL, JSON-P, JAXB, Guice) are moved too."
+    docs_url: https://jakarta.ee/specifications/platform/10/
+
+  - id: javax-string-literal
+    description: "A string naming a Java EE package or property (reflection, configuration keys, persistence properties). The recipe does not change strings."
+    matcher:
+      type: regex
+      pattern: '"javax\.(persistence|validation|servlet|faces|xml\.bind|ws\.rs|ejb|inject|json|enterprise|transaction|jms|mail)\.'
+    extensions: [".java", ".kt", ".properties", ".yml", ".yaml"]
+    severity: warn
+    auto_fixable: false
+    fix_hint: "Decide per string: a class name for Class.forName or a property key read by a Jakarta implementation needs the jakarta.* name; a key kept for compatibility with old configuration can stay next to the new one."
+    docs_url: https://jakarta.ee/blogs/javax-jakartaee-namespace-ecosystem-progress/
+
+  - id: javax-descriptor-namespace
+    description: "XML descriptors with the Java EE namespace (xmlns.jcp.org / java.sun.com): web.xml, persistence.xml, beans.xml, ..."
+    matcher:
+      type: regex
+      pattern: 'xmlns="http://(xmlns\.jcp\.org/xml/ns/(javaee|persistence)|java\.sun\.com/xml/ns/(javaee|persistence))'
+    extensions: [".xml"]
+    severity: warn
+    auto_fixable: false
+    fix_hint: "The recipe updates beans.xml, ejb-jar.xml and validation.xml. Check the others (web.xml, persistence.xml, faces-config.xml) against the Jakarta EE 10 schemas (https://jakarta.ee/xml/ns/jakartaee), including javax.* property names inside them."
+    docs_url: https://jakarta.ee/xml/ns/jakartaee/

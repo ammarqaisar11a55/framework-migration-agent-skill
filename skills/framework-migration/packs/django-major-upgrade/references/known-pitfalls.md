@@ -31,3 +31,7 @@ upgrade them first. The install step supports `uv.lock` (`uv sync`), `poetry.loc
 **Behaviour changes the fixers do not cover.** Logging out with a GET request no longer works (use a
 POST form); `USE_L10N = False` is gone, so dates and numbers follow the active locale; a
 `forms.URLField` without `assume_scheme` keeps `http` until 6.0, then `https`. Rules flag these.
+
+**Generated migrations follow `black` if it is on PATH.** `makemigrations` formats new migration
+files with `black` when it finds it; otherwise they are written in Django's own style. The content
+(the operations) is the same either way.

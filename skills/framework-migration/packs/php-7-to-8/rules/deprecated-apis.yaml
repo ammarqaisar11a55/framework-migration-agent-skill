@@ -1,0 +1,141 @@
+# PHP 7 constructs that PHP 8 removes, changes or replaces. Sources: the PHP manual's migration
+# appendices (8.0 backward-incompatible changes, 8.1 / 8.2 deprecations) and Rector's php80 set list
+# (references/official-sources.md). Rector's sets target PHP 8.0, so 8.1+ deprecations are manual.
+
+exclude: ['(^|/)(vendor|var|storage|bootstrap/cache)/']
+
+rules:
+  # Fixed by Rector (the stage).
+  - id: removed-functions-rector
+    description: "Functions removed in PHP 8.0 that Rector rewrites: each, create_function, money_format, hebrevc, restore_include_path."
+    matcher:
+      type: regex
+      pattern: '(?<![\w>:$])(each|create_function|money_format|hebrevc|restore_include_path)\s*\('
+    extensions: [".php"]
+    severity: error
+    auto_fixable: true
+    fix_hint: "Rewritten by Rector (foreach / key()+current(), closures, number_format, nl2br(hebrev()), ini_restore)."
+    docs_url: https://www.php.net/manual/en/migration80.incompatible.php
+
+  - id: strpos-false-check
+    description: "strpos(...) compared with false, which PHP 8's str_contains() replaces."
+    matcher:
+      type: regex
+      pattern: '\bstrpos\s*\(.*\)\s*[!=]==\s*false\b|\bfalse\s*[!=]==\s*strpos\s*\('
+    extensions: [".php"]
+    severity: info
+    auto_fixable: true
+    fix_hint: "Rewritten to str_contains() by Rector (StrContainsRector)."
+    docs_url: https://www.php.net/manual/en/migration80.new-features.php
+
+  - id: substr-prefix-suffix
+    description: "substr() prefix / suffix comparisons, which PHP 8's str_starts_with() / str_ends_with() replace."
+    matcher:
+      type: regex
+      pattern: '\bsubstr\s*\(\s*\$\w+\s*,\s*(0\s*,[^)]*|-\s*\d+)\)\s*[!=]=='
+    extensions: [".php"]
+    severity: info
+    auto_fixable: true
+    fix_hint: "Rewritten to str_starts_with() / str_ends_with() by Rector."
+    docs_url: https://www.php.net/manual/en/migration80.new-features.php
+
+  - id: get-class-object
+    description: "get_class($object), which PHP 8 writes as $object::class."
+    matcher:
+      type: regex
+      pattern: '\bget_class\s*\(\s*\$\w+\s*\)'
+    extensions: [".php"]
+    severity: info
+    auto_fixable: true
+    fix_hint: "Rewritten to $object::class by Rector (ClassOnObjectRector)."
+    docs_url: https://www.php.net/manual/en/migration80.new-features.php
+
+  - id: tostring-without-stringable
+    description: "A class with __toString() that does not declare Stringable (PHP 8 adds it implicitly)."
+    matcher:
+      type: regex
+      pattern: 'function\s+__toString\s*\('
+    extensions: [".php"]
+    skip_if_file_matches: '\bStringable\b'
+    severity: info
+    auto_fixable: true
+    fix_hint: "Rector adds `implements \\Stringable` (StringableForToStringRector)."
+    docs_url: https://www.php.net/manual/en/migration80.new-features.php
+
+  - id: isset-ternary
+    description: "isset($x) ? $x : default, which the null coalescing operator replaces."
+    matcher:
+      type: regex
+      pattern: 'isset\(\s*(\$[^()]+?)\s*\)\s*\?\s*\1\s*:'
+    extensions: [".php"]
+    severity: info
+    auto_fixable: true
+    fix_hint: "Rewritten to ?? (or ??=) by Rector."
+    docs_url: https://www.php.net/manual/en/migration70.new-features.php
+
+  # Manual: behaviour changes and later deprecations Rector's 8.0 sets do not change.
+  - id: loose-zero-comparison
+    description: "A loose comparison with 0: PHP 8 compares a non-numeric string with a number as strings, so 0 == \"abc\" is now false."
+    matcher:
+      type: regex
+      pattern: '(?<![=!<>])[!=]=(?!=)\s*0\b(?![.\d])|\b0\s*[!=]=(?!=)'
+    extensions: [".php"]
+    severity: warn
+    auto_fixable: false
+    fix_hint: "Check what types reach the comparison; compare with === after an explicit cast or is_numeric() check."
+    docs_url: https://www.php.net/manual/en/migration80.incompatible.php#migration80.incompatible.core.string-number-comparision
+
+  - id: is-resource-check
+    description: "is_resource(): curl, GD, sockets, OpenSSL, XML and other handles are objects in PHP 8, so the check is now false."
+    matcher:
+      type: regex
+      pattern: '\bis_resource\s*\('
+    extensions: [".php"]
+    severity: warn
+    auto_fixable: false
+    fix_hint: "Check the handle against false (the failure value) instead of is_resource()."
+    docs_url: https://www.php.net/manual/en/migration80.incompatible.php#migration80.incompatible.resource2object
+
+  - id: removed-functions-manual
+    description: "Functions removed in PHP 8.0 that Rector does not rewrite."
+    matcher:
+      type: regex
+      pattern: '(?<![\w>:$])(convert_cyr_string|ezmlm_hash|fgetss|gzgetss|image2wbmp|ldap_sort|read_exif_data|get_magic_quotes_gpc|get_magic_quotes_runtime)\s*\('
+    extensions: [".php"]
+    severity: error
+    auto_fixable: false
+    fix_hint: "Replace by hand: mb_convert_encoding, strip_tags(fgets()), imagewbmp, exif_read_data; magic quotes always return false — remove the check."
+    docs_url: https://www.php.net/manual/en/migration80.incompatible.php
+
+  - id: deprecated-functions-8x
+    description: "Functions deprecated in PHP 8.1 / 8.2 (strftime, utf8_encode, ...): they still work, with a deprecation notice."
+    matcher:
+      type: regex
+      pattern: '(?<![\w>:$])(strftime|gmstrftime|utf8_encode|utf8_decode|date_sunrise|date_sunset|strptime|mhash\w*)\s*\('
+    extensions: [".php"]
+    severity: warn
+    auto_fixable: false
+    fix_hint: "strftime → IntlDateFormatter or date(); utf8_encode/utf8_decode → mb_convert_encoding($s, 'UTF-8', 'ISO-8859-1') (and back); mhash → hash()."
+    docs_url: https://www.php.net/manual/en/migration82.deprecated.php
+
+  - id: filter-sanitize-string
+    description: "FILTER_SANITIZE_STRING / FILTER_SANITIZE_STRIPPED, deprecated in PHP 8.1."
+    matcher:
+      type: regex
+      pattern: '\bFILTER_SANITIZE_(STRING|STRIPPED)\b'
+    extensions: [".php"]
+    severity: warn
+    auto_fixable: false
+    fix_hint: "Use htmlspecialchars() when output is escaped, or strip_tags() if tags must go; validate input explicitly."
+    docs_url: https://www.php.net/manual/en/migration81.deprecated.php
+
+  - id: dollar-brace-interpolation
+    description: "\"${var}\" string interpolation, deprecated in PHP 8.2."
+    matcher:
+      type: regex
+      pattern: '\$\{[A-Za-z_]'
+    extensions: [".php"]
+    severity: warn
+    auto_fixable: false
+    fix_hint: "Write \"{$var}\" (or \"{${expr}}\" for variable-variables)."
+    docs_url: https://www.php.net/manual/en/migration82.deprecated.php
