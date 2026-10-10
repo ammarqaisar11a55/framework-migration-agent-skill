@@ -1,0 +1,189 @@
+# Next.js 15 APIs and options that Next.js 16 removes or changes. Source: the version 16 upgrade
+# guide (references/official-sources.md). Paths: App Router files under app/ or src/app/, the
+# middleware file at the root or in src/, next.config.* at the root.
+
+rules:
+  - id: sync-request-api
+    description: "Synchronous cookies() / headers() / draftMode(), removed in Next.js 16 (Next.js 15 allowed it temporarily)."
+    matcher:
+      type: regex
+      pattern: '(?<![\w.])(cookies|headers|draftMode)\(\)\s*\.'
+    extensions: [".js", ".jsx", ".ts", ".tsx", ".mjs"]
+    severity: error
+    auto_fixable: true
+    fix_hint: "Rewritten to (await cookies()).get(...) by next-async-request-api, which the stage runs; the enclosing function becomes async. A synchronous Client Component needs React's use() instead."
+    docs_url: https://nextjs.org/docs/app/guides/upgrading/version-16
+
+  - id: sync-route-params
+    description: "Destructured params / searchParams in a non-async page, layout, route or metadata function: synchronous access, removed in Next.js 16."
+    matcher:
+      type: regex
+      pattern: '^export\s+(default\s+)?function\s+\w*\s*\(\s*(\w+\s*,\s*)?\{[^}]*\b(params|searchParams)\b'
+    extensions: [".js", ".jsx", ".ts", ".tsx"]
+    exclude: ['^(?!(src/)?app/)']
+    severity: error
+    auto_fixable: true
+    fix_hint: "Rewritten by next-async-request-api: the function becomes async and awaits props.params / props.searchParams. Callers that pass params themselves must pass a Promise."
+    docs_url: https://nextjs.org/docs/app/guides/upgrading/version-16
+
+  - id: codemod-error-comment
+    description: "A @next-codemod-error comment or UnsafeUnwrapped cast left by next-async-request-api where it could not make the access asynchronous."
+    matcher:
+      type: regex
+      pattern: '@next-codemod-error|@next-codemod-ignore|UnsafeUnwrapped'
+    extensions: [".js", ".jsx", ".ts", ".tsx"]
+    severity: error
+    auto_fixable: false
+    fix_hint: "Make the access asynchronous by hand (await it, or use React's use() in a Client Component) and delete the comment or cast."
+    docs_url: https://nextjs.org/docs/app/guides/upgrading/version-16
+
+  - id: middleware-convention
+    description: The middleware file convention and export name, deprecated in favour of proxy.
+    matcher:
+      type: regex
+      pattern: '^export\s+(default\s+)?(async\s+)?function\s+middleware\b|^export\s+(const|let)\s+middleware\b|^export\s*\{[^}]*\bmiddleware\b'
+    extensions: [".js", ".ts"]
+    exclude: ['^(?!(src/)?middleware\.[jt]s$)']
+    skip_if_file_matches: '\bruntime\s*[:=]\s*["''](experimental-)?edge["'']'
+    severity: warn
+    auto_fixable: true
+    fix_hint: "Renamed to proxy.ts / export function proxy by middleware-to-proxy (proxy runs on the Node.js runtime). A middleware that sets the edge runtime is kept as middleware; see edge-middleware."
+    docs_url: https://nextjs.org/docs/app/guides/upgrading/version-16
+
+  - id: edge-middleware
+    description: "Middleware on the edge runtime. Proxy runs on Node.js only; the guide says to keep such middleware as middleware."
+    matcher:
+      type: regex
+      pattern: '\bruntime\s*[:=]\s*["''](experimental-)?edge["'']'
+    extensions: [".js", ".ts"]
+    exclude: ['^(?!(src/)?middleware\.[jt]s$)']
+    severity: info
+    auto_fixable: false
+    fix_hint: "Kept as middleware (still supported, with a deprecation warning). Move it to proxy only after checking it works on the Node.js runtime."
+    docs_url: https://nextjs.org/docs/app/guides/upgrading/version-16
+
+  - id: middleware-config-flags
+    description: "next.config flags named after middleware (skipMiddlewareUrlNormalize, ...), renamed to proxy equivalents."
+    matcher:
+      type: regex
+      pattern: '\b(skipMiddlewareUrlNormalize|middlewarePrefetch|middlewareClientMaxBodySize)\b'
+    extensions: [".js", ".mjs", ".cjs", ".ts", ".mts"]
+    exclude: ['^(?!next\.config\.)']
+    severity: warn
+    auto_fixable: true
+    fix_hint: "Renamed (skipProxyUrlNormalize, ...) by middleware-to-proxy."
+    docs_url: https://nextjs.org/docs/app/guides/upgrading/version-16
+
+  - id: experimental-turbo
+    description: "experimental.turbo in next.config, removed in Next.js 16 (top-level turbopack instead)."
+    matcher:
+      type: regex
+      pattern: '^\s*turbo\s*:'
+    extensions: [".js", ".mjs", ".cjs", ".ts", ".mts"]
+    exclude: ['^(?!next\.config\.)']
+    severity: error
+    auto_fixable: true
+    fix_hint: "Moved to the top-level turbopack key by next-experimental-turbo-to-turbopack, which the stage runs."
+    docs_url: https://nextjs.org/docs/app/guides/upgrading/version-16
+
+  - id: next-lint
+    description: "The next lint command, removed in Next.js 16."
+    matcher:
+      type: regex
+      pattern: '"[^"]*":\s*"[^"]*\bnext\s+lint\b'
+    extensions: [".json"]
+    exclude: ['^(?!package\.json$)']
+    severity: error
+    auto_fixable: true
+    fix_hint: "Replaced with the ESLint CLI (eslint .) and a flat config using eslint-config-next by next-lint-to-eslint-cli."
+    docs_url: https://nextjs.org/docs/app/guides/upgrading/version-16
+
+  - id: next-config-eslint
+    description: "The eslint option in next.config, removed in Next.js 16 (next build no longer lints)."
+    matcher:
+      type: regex
+      pattern: '^\s*eslint\s*:\s*\{'
+    extensions: [".js", ".mjs", ".cjs", ".ts", ".mts"]
+    exclude: ['^(?!next\.config\.)']
+    severity: warn
+    auto_fixable: false
+    fix_hint: "Remove it. next lint linted only eslint.dirs (default: app, pages, components, lib, src); the ESLint CLI's `eslint .` lints the whole project, so pass the same directories in the lint script or add ignores if the scope should stay."
+    docs_url: https://nextjs.org/docs/app/guides/upgrading/version-16
+
+  - id: images-domains
+    description: "images.domains in next.config, deprecated in favour of images.remotePatterns."
+    matcher:
+      type: regex
+      pattern: '^\s*domains\s*:\s*\['
+    extensions: [".js", ".mjs", ".cjs", ".ts", ".mts"]
+    exclude: ['^(?!next\.config\.)']
+    severity: warn
+    auto_fixable: false
+    fix_hint: "Replace each domain with a remotePatterns entry ({ protocol: 'https', hostname: '...' }); domains allows any protocol, path and port."
+    docs_url: https://nextjs.org/docs/app/guides/upgrading/version-16
+
+  - id: runtime-config
+    description: "serverRuntimeConfig / publicRuntimeConfig and next/config, removed in Next.js 16."
+    matcher:
+      type: regex
+      pattern: '\b(serverRuntimeConfig|publicRuntimeConfig)\b|from\s+["'']next/config["'']'
+    extensions: [".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts"]
+    severity: error
+    auto_fixable: false
+    fix_hint: "Use environment variables: process.env on the server, NEXT_PUBLIC_ variables for the client (inlined at build time), or read them at request time where the value must not be baked in."
+    docs_url: https://nextjs.org/docs/app/guides/upgrading/version-16
+
+  - id: revalidate-tag-one-argument
+    description: "revalidateTag(tag) with one argument, deprecated; Next.js 16 takes a cacheLife profile as the second argument."
+    matcher:
+      type: regex
+      pattern: '\brevalidateTag\(\s*[^,()]+\)'
+    extensions: [".js", ".jsx", ".ts", ".tsx", ".mjs"]
+    severity: warn
+    auto_fixable: false
+    fix_hint: "Choose the semantics: revalidateTag(tag, 'max') serves stale content while it revalidates; updateTag(tag) in a Server Action expires it immediately (read-your-own-writes)."
+    docs_url: https://nextjs.org/docs/app/guides/upgrading/version-16
+
+  - id: amp
+    description: AMP support (next/amp, amp config), removed in Next.js 16.
+    matcher:
+      type: regex
+      pattern: 'from\s+["'']next/amp["'']|\bamp\s*:\s*(true|["'']hybrid["''])'
+    extensions: [".js", ".jsx", ".ts", ".tsx"]
+    severity: error
+    auto_fixable: false
+    fix_hint: "Remove the AMP pages or variants; there is no replacement in Next.js."
+    docs_url: https://nextjs.org/docs/app/guides/upgrading/version-16
+
+  - id: legacy-image
+    description: next/legacy/image, deprecated in Next.js 16.
+    matcher:
+      type: regex
+      pattern: 'from\s+["'']next/legacy/image["'']'
+    extensions: [".js", ".jsx", ".ts", ".tsx"]
+    severity: warn
+    auto_fixable: false
+    fix_hint: "Move to next/image; its layout and objectFit props become style and sizes."
+    docs_url: https://nextjs.org/docs/app/guides/upgrading/version-16
+
+  - id: unstable-prefix
+    description: "unstable_cacheLife / unstable_cacheTag and other APIs stabilised in Next.js 16."
+    matcher:
+      type: regex
+      pattern: '\bunstable_(cacheLife|cacheTag)\b'
+    extensions: [".js", ".jsx", ".ts", ".tsx"]
+    severity: warn
+    auto_fixable: true
+    fix_hint: "Renamed by remove-unstable-prefix."
+    docs_url: https://nextjs.org/docs/app/guides/upgrading/version-16
+
+  - id: experimental-ppr
+    description: "The experimental_ppr route segment config, removed in Next.js 16 (Cache Components replace it)."
+    matcher:
+      type: regex
+      pattern: '^export\s+const\s+experimental_ppr\b'
+    extensions: [".js", ".jsx", ".ts", ".tsx"]
+    severity: warn
+    auto_fixable: true
+    fix_hint: "Removed by remove-experimental-ppr. Partial prerendering now comes with cacheComponents, which the upgrade does not enable."
+    docs_url: https://nextjs.org/docs/app/guides/upgrading/version-16

@@ -7,6 +7,8 @@
 # exclude:      optional, top level or per rule — regexes over the project-relative path; matching
 #               files are not scanned. List the files this pack's codemods never touch, so they are
 #               not reported as auto-fixable.
+# skip_if_file_matches: optional, per rule — a regex over the whole file; files it matches are not
+#               scanned by that rule (code the pack's tools deliberately keep, such as edge middleware).
 rules:
   - id: example-deprecated-call
     description: oldApi() was removed in example-framework 2.

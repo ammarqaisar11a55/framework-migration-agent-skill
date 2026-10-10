@@ -1,0 +1,32 @@
+id: nextjs-major-upgrade
+title: Next.js 15 → 16
+ecosystem: node
+tier: 1
+status: shipped
+
+from: { framework: next, versions: "15.x" }
+to:   { framework: next, versions: "16.x" }
+
+tools:
+  - { name: "@next/codemod", version: "16.3.6", role: engine }
+  # Exact versions for what the tool upgrades (finish-upgrade.js pins each one the project has).
+  - { name: next, version: "16.3.6", role: dependency }
+  - { name: react, version: "19.3.0", role: dependency }
+  - { name: react-dom, version: "19.3.0", role: dependency }
+  - { name: react-is, version: "19.3.0", role: dependency }
+  - { name: "@types/react", version: "19.3.0", role: devDependency }
+  - { name: "@types/react-dom", version: "19.3.0", role: devDependency }
+  - { name: eslint-config-next, version: "16.3.6", role: devDependency }
+  - { name: "@next/eslint-plugin-next", version: "16.3.6", role: devDependency }
+  - { name: eslint, version: "9.39.5", role: devDependency }
+stages:
+  - id: upgrade
+    title: Run @next/codemod upgrade and next-async-request-api, then fix what they leave
+    commands:
+      - run: "node {pack_dir}/codemods/official-upgrade.mjs"
+        dry_run: "node {pack_dir}/codemods/official-upgrade.mjs --dry-run"
+    codemods: [finish-upgrade.js]
+    fix_rules: true
+    post_commands: ["npm install"]
+checks:
+  test: "npm test"

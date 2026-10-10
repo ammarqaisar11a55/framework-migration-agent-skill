@@ -67,6 +67,12 @@ describe("detect", () => {
     expect(where([excluded], "src/app.js", "module.exports = app;")).toEqual(["cjs@1:1"]);
   });
 
+  it("skips files whose content matches skip_if_file_matches", () => {
+    const kept = rule("mw", { type: "regex", pattern: "function middleware" }, { skip_if_file_matches: "runtime:\\s*'edge'" });
+    expect(where([kept], "middleware.js", "export function middleware() {}\nexport const config = { runtime: 'edge' };")).toEqual([]);
+    expect(where([kept], "middleware.js", "export function middleware() {}")).toEqual(["mw@1:8"]);
+  });
+
   it("scans the project, ignores node_modules, sorts findings and matches the schema", () => {
     const root = mkdtempSync(join(tmpdir(), "fm-detect-"));
     try {

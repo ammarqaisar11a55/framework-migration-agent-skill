@@ -15,7 +15,7 @@ import { runChecks, type StageCheck } from "../skills/framework-migration/engine
 import { detect } from "../skills/framework-migration/engine/detect.ts";
 import { exec } from "../skills/framework-migration/engine/exec.ts";
 import { listPacks, loadFixtures, validatePack, type Fixture } from "../skills/framework-migration/engine/pack.ts";
-import { walk } from "../skills/framework-migration/engine/paths.ts";
+import { IGNORED_DIRS, walk } from "../skills/framework-migration/engine/paths.ts";
 import { runStage } from "../skills/framework-migration/engine/run-codemod.ts";
 import type { Finding, Pack } from "../skills/framework-migration/engine/types.ts";
 
@@ -45,7 +45,8 @@ interface PackScore {
 
 const key = (f: { rule: string; file: string; line: number }): string => `${f.rule} ${f.file}:${f.line}`;
 
-const IGNORED = new Set(["node_modules", ".git", ".fm", "dist", "package-lock.json"]);
+// Build output (.next, dist, ...) is what the checks produce, not what the migration wrote.
+const IGNORED = new Set([...IGNORED_DIRS, "package-lock.json"]);
 const tree = (root: string): Map<string, string> => new Map(walk(root, IGNORED).map((path) => [path, readFileSync(join(root, path), "utf8")]));
 
 type Manifest = { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };

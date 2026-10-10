@@ -389,3 +389,40 @@ The fixture tests import `.svelte` files through a module hook that compiles the
 Svelte is installed (`dom` output on 4, `client` on 5), run with `--conditions=browser` and a jsdom
 global DOM, and mount through a helper that uses `new Component()` or `mount()`. The same tests
 therefore run unchanged before and after the migration and check behaviour, not syntax.
+
+## M9 — `nextjs-major-upgrade`
+
+### D49. Scope: Next.js 15 → 16; Pages → App Router is not part of the pack
+PLAN §8 lists "Next.js majors; Pages → App Router". The pack covers the current major step, 15 → 16,
+with the official upgrade codemod. Earlier majors are reached by the same tool one step at a time but
+were not verified with fixtures. Moving from the Pages Router to the App Router is a rewrite of data
+fetching and routing that no official codemod performs; it would be a tier 3 (assist-mode) pack and is
+not shipped.
+
+### D50. The upgrade runs on a scratch copy and the skipped removal codemods run after it
+`@next/codemod upgrade` installs packages and has no dry-run, so it runs like D41's tools on a scratch
+install with `--yes`. It runs only codemods registered after the installed version, so an app on a
+late 15.x skips those for 15.x deprecations that 16 removes (synchronous Request APIs,
+`experimental.turbo`, `next lint`, `experimental-edge`). The guide asks for `next-async-request-api`
+explicitly and counts the others as part of the upgrade, so the runner runs each one the upgrade
+skipped; the lint codemod only when a script uses `next lint` (on its own it sets up ESLint
+everywhere).
+
+### D51. React 19 is a prerequisite, not part of this pack
+In 16.3 the upgrade moves React 18 to 19 without asking and runs the React 19 codemods from the
+Codemod registry at `latest`. The runner stops on React 18 and points to `react-major-upgrade`, which
+does that step with pinned tools; the opt-out flag (`--skip-react-upgrade`) exists only from 16.4.
+
+### D52. Edge middleware is restored; adoption-only `instant = false` blocks are removed
+The guide says to keep middleware that uses the edge runtime, since proxy runs only on Node.js;
+`middleware-to-proxy` renames it regardless, so the runner restores a middleware file that sets the
+edge runtime explicitly. The 16.3 upgrade also runs the `cache-components-instant-false` adoption
+codemod; `instant` has no effect without `cacheComponents`, so finish-upgrade.js removes the exact
+blocks it inserts unless the config enables `cacheComponents`. Rules gained `skip_if_file_matches` (a
+regex over the file) so `middleware-convention` does not count the kept edge middleware as
+auto-fixable.
+
+### D53. Next.js fixtures are tested through `next build` and `next start`
+Each fixture's test script builds the app and runs `node --test` against `next start` on a free port,
+fetching pages, redirects, headers and route handlers. The same tests run on 15 and 16. The evals
+compare after/ without build output (`.next/` and the engine's other ignored directories).

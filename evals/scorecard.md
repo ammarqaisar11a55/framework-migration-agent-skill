@@ -9,6 +9,7 @@ without a smoke probe either, that the test run loaded the migrated modules.
 | `eslint-flat-config` | 4 | 100% | 100% | 100% | 100% | 0 |
 | `express-4-to-5` | 5 | 100% | 100% | 100% | 100% | 5 |
 | `express-js-to-ts` | 5 | 100% | 100% | 100% | 100% | 5 |
+| `nextjs-major-upgrade` | 4 | 100% | 100% | 100% | 100% | 3 |
 | `node-cjs-to-esm` | 4 | 100% | 100% | 100% | 100% | 7 |
 | `react-major-upgrade` | 4 | 100% | 100% | 100% | 100% | 7 |
 | `svelte-4-to-5` | 4 | 100% | 100% | 100% | 100% | 4 |
@@ -42,6 +43,15 @@ without a smoke probe either, that the test run loaded the migrated modules.
 | 03-error-handler | positive | yes | 5/5 yes | 12 / 0 / 0 | — | yes | 0 |
 | 04-mixed-cjs-esm | positive | yes | 4/4 yes | 10 / 0 / 0 | — | yes | 0 |
 | 05-dynamic-require | negative | yes | 6/6 yes | 19 / 0 / 0 | yes | yes | 5 |
+
+## nextjs-major-upgrade
+
+| Fixture | Kind | Compiles | Tests (after/baseline) | Findings TP / FP / FN | Negative patterns kept | Matches after/ | Manual items |
+|---|---|---|---|---|---|---|---|
+| 01-async-request-apis | positive | yes | 4/4 yes | 6 / 0 / 0 | — | yes | 0 |
+| 02-middleware-proxy | positive | yes | 3/3 yes | 3 / 0 / 0 | — | yes | 0 |
+| 03-next-lint | positive | yes | 2/2 yes | 3 / 0 / 0 | — | yes | 2 |
+| 04-edge-middleware | negative | yes | 1/1 yes | 1 / 0 / 0 | yes | yes | 1 |
 
 ## node-cjs-to-esm
 

@@ -164,6 +164,10 @@ export function validatePack(dir: string): ValidationResult {
             const problem = invalidPattern(pattern);
             if (problem !== undefined) errors.push(`rules/deprecated-apis.yaml: rule "${rule.id}" has an exclude pattern that is not a valid regex (${problem})`);
           }
+          if (rule.skip_if_file_matches !== undefined) {
+            const problem = invalidPattern(rule.skip_if_file_matches);
+            if (problem !== undefined) errors.push(`rules/deprecated-apis.yaml: rule "${rule.id}" has a skip_if_file_matches pattern that is not a valid regex (${problem})`);
+          }
           if (seen.has(rule.id)) errors.push(`rules/deprecated-apis.yaml: duplicate rule id "${rule.id}"`);
           seen.add(rule.id);
           if (rule.matcher.type === "regex") {

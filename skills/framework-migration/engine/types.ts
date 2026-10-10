@@ -76,6 +76,8 @@ export interface Rule {
   exclude?: string[];
   /** Node: skip .cjs files and files under a nested package.json with "type": "commonjs". */
   skip_explicit_commonjs?: boolean;
+  /** A regular expression over the whole file; a file it matches is skipped (code the migration deliberately keeps). */
+  skip_if_file_matches?: string;
   severity: Severity;
   auto_fixable: boolean;
   fix_hint: string;

@@ -36,6 +36,7 @@ export function matchRules(rules: readonly Rule[], path: string, source: string,
   for (const rule of rules) {
     if (!(rule.extensions ?? defaultExtensions).includes(ext)) continue;
     if (rule.exclude?.some((pattern) => new RegExp(pattern).test(path))) continue;
+    if (rule.skip_if_file_matches !== undefined && new RegExp(rule.skip_if_file_matches, "m").test(source)) continue;
     let hits: Hit[];
     if (rule.matcher.type === "regex") {
       hits = regexHits(rule.matcher, lines);
