@@ -2,7 +2,7 @@
 name: framework-migration
 description: Use when migrating an application between frameworks or languages, upgrading to a new major version, replacing deprecated APIs, or producing a staged migration report. Runs a gated, commit-per-stage workflow driven by pluggable migration packs.
 license: MIT
-compatibility: Needs a shell with Node.js 20.19+ and npm/npx, git, and network access to the npm registry (and GitHub for packs that run official tools from source). Works in any Agent Skills client, such as Claude Code, Codex and Cursor.
+compatibility: Needs a shell with Node.js 20.19+ and npm/npx, git, and network access to the npm registry (and GitHub for packs that run official tools from source); Python packs also need Python 3.10+ with venv and PyPI access. Works in any Agent Skills client, such as Claude Code, Codex and Cursor.
 ---
 
 # Framework migration
@@ -24,7 +24,9 @@ In a checkout of the skill's own repository, `npm run fm -- <command>` (from its
 engine from source. If npm cannot find the package (a release that is not published yet), ask the
 user for a checkout of the repository and use that. Below, `fm` means one of these. Paths such as `packs/<id>/references/` are
 relative to this file's directory. Run every command against the project directory
-(`[dir]`, default `.`). Artifacts go to `<dir>/.fm/`; add `.fm/` to `.git/info/exclude` so stage
+(`[dir]`, default `.`). For a project in another ecosystem, run `fm` with the project's own
+environment active (for Python, its virtualenv), so the pack's commands and checks use the
+project's `python`, `pip` and tools. Artifacts go to `<dir>/.fm/`; add `.fm/` to `.git/info/exclude` so stage
 commits do not pick it up. `fm --help` prints every command and flag.
 
 ## 1. Pick a pack

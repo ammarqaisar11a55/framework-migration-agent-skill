@@ -13,7 +13,8 @@ One generic **migration engine** plus pluggable **migration packs**. Each pack c
 
 ## Install
 
-Requires Node.js 20.19 or newer, npm and git.
+Requires Node.js 20.19 or newer, npm and git. Python packs also need Python 3.10+ with `venv`;
+run them with the project's virtualenv active.
 
 The skill uses the open [Agent Skills](https://agentskills.io) format (a folder with a `SKILL.md`),
 which Claude Code, Codex and Cursor all load. `fm install-skill` copies it to where each one looks:
@@ -114,8 +115,8 @@ Tier 1 = automated, 2 = partially automated, 3 = assist mode (inventory, finding
 | [`angular-major-upgrade`](skills/framework-migration/packs/angular-major-upgrade) | Angular 20 → 21 → 22 | 1 | shipped |
 | [`svelte-4-to-5`](skills/framework-migration/packs/svelte-4-to-5) | Svelte 4 → 5 | 1 | shipped |
 | [`tailwind-3-to-4`](skills/framework-migration/packs/tailwind-3-to-4) | Tailwind v3 → v4 | 1 | shipped |
-| `django-major-upgrade` | Django majors | 1 | planned |
-| `pydantic-1-to-2` | Pydantic v1 → v2 | 1 | planned |
+| [`django-major-upgrade`](skills/framework-migration/packs/django-major-upgrade) | Django 4.2 → 5.2 (LTS) | 1 | shipped |
+| [`pydantic-1-to-2`](skills/framework-migration/packs/pydantic-1-to-2) | Pydantic v1 → v2 | 1 | shipped |
 | `javax-to-jakarta` | Java EE → Jakarta EE | 1 | planned |
 | `spring-boot-2-to-3` | Spring Boot 2 → 3 | 1 | planned |
 | `java-lts-upgrade` | Java 8 → 11 → 17 → 21 | 1 | planned |

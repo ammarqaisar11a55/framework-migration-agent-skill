@@ -455,3 +455,35 @@ The fixtures run TestBed specs with `@angular/build:unit-test` (Vitest, jsdom), 
 projects use from 21, and `ng build` as the type check. Angular 22 requires Node.js
 `^22.22.3 || ^24.15.0 || >=26`; the runner stops on older versions. CI's evals job uses the latest
 Node.js 22, which satisfies it; the fixtures were verified locally with Node.js 22.23.3.
+
+## M9 — Python packs (`django-major-upgrade`, `pydantic-1-to-2`)
+
+### D58. Other ecosystems run in the project's own environment; the evals give each fixture one
+Pack commands and checks call the project's toolchain (`python`, `pip`, `uv`, `poetry`) from PATH,
+so `fm` runs with the project's environment active (SKILL.md says so). Adapters gained `install`
+(how the evals install a fixture) and `binDirs` (put first on PATH: `.venv/bin` for Python); the
+evals install every non-Node fixture on its own. Python tools (django-upgrade, bump-pydantic) run
+from their own virtualenvs in the cache directory, created in place because a virtualenv's scripts
+hard-code its path. CI sets up Python 3.12 (the newest Django 4.2 supports). The test-count parser
+learned unittest's "Ran N tests" summary and pytest's `-q` summary.
+
+### D59. Django: LTS to LTS in two stages, with the index_together migration generated
+The Django upgrade guide says to resolve deprecation warnings on the current version first.
+Stage 1 runs django-upgrade with `--target-version 4.2` while still on 4.2; stage 2 pins 5.2.17 in
+requirements files and `pyproject.toml`, installs, and runs django-upgrade with `--target-version
+5.2`. django-upgrade rewrites in place without a dry-run, so it runs on a scratch copy. Its
+`index_together` fixer leaves models that need a `RenameIndex` migration; the runner runs
+`makemigrations <app> --no-header` for those apps (no timestamp, so the result is reproducible).
+5.x deprecations without a fixer (`%`-formatted `format_html`, positional `save()` arguments,
+`URLField` scheme) are rules for people.
+
+### D60. Pydantic: bump-pydantic in a fully pinned environment, plus the import-time fixes
+bump-pydantic 0.8.0 is the last release and does not bound typer or click; current typer parses its
+arguments differently and older typer breaks with click 8.3. Its virtualenv pins libcst, typer,
+click, rich and typing-extensions. After it, `finish-bump.js` applies the two replacements the
+migration guide gives for code v2 rejects at import time: `allow_mutation=False` → `frozen=True`
+(bump-pydantic leaves a TODO) and a bare `@root_validator` → `@root_validator(skip_on_failure=True)`
+(the validator no longer runs after a field failed; noted for each one). It pins pydantic 2.13.5
+and adds pydantic-settings when the code imports it. Deprecated methods (`parse_obj`, `.dict()`,
+...) still work in v2 and are reported, not renamed: `.dict()` and `.copy()` cannot be told apart
+from dict and list methods by pattern.

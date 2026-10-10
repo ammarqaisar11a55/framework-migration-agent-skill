@@ -36,6 +36,10 @@ jobs:
         with:
           node-version: "22"
           cache: npm
+      # Python packs: each fixture gets a virtualenv. 3.12 is the newest Python Django 4.2 supports.
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
       - run: npm ci
       # Every shipped pack's fixtures through the real pipeline; fails unless all pass.
       - run: npm run evals

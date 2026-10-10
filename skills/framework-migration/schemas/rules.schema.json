@@ -4,6 +4,9 @@
   "title": "Deprecated-API rule file (rules/deprecated-apis.yaml)",
   "type": "object",
   "additionalProperties": false,
+  "patternProperties": {
+    "^x-": { "description": "Ignored: a place for YAML anchors that several rules reference (x-name: &name value)." }
+  },
   "required": ["rules"],
   "definitions": {
     "exclude": {

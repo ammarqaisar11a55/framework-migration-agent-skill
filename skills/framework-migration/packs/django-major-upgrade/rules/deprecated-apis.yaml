@@ -1,0 +1,163 @@
+# Django APIs deprecated in 4.x and removed in 5.0 / 5.1, and 5.x deprecations to plan for. Source:
+# the Django 5.0, 5.1 and 5.2 release notes and the deprecation timeline
+# (references/official-sources.md). django-upgrade's fixers for each are listed in fix hints.
+
+exclude: ['(^|/)(\.venv|venv|site-packages)/']
+
+rules:
+  - id: storage-settings
+    description: "DEFAULT_FILE_STORAGE / STATICFILES_STORAGE settings, removed in 5.1 (STORAGES instead)."
+    matcher:
+      type: regex
+      pattern: '^\s*(DEFAULT_FILE_STORAGE|STATICFILES_STORAGE)\s*='
+    extensions: [".py"]
+    severity: error
+    auto_fixable: true
+    fix_hint: "Combined into STORAGES by django-upgrade (settings_storages, target 4.2)."
+    docs_url: https://docs.djangoproject.com/en/5.2/releases/5.1/#features-removed-in-5-1
+
+  - id: use-l10n
+    description: "The USE_L10N setting, removed in 5.0 (localisation is always on)."
+    matcher:
+      type: regex
+      pattern: '^\s*USE_L10N\s*='
+    extensions: [".py"]
+    severity: error
+    auto_fixable: true
+    fix_hint: "Removed by django-upgrade (use_l10n). If it was False, dates and numbers now render in the locale's format."
+    docs_url: https://docs.djangoproject.com/en/5.2/releases/5.0/#features-removed-in-5-0
+
+  - id: timezone-utc
+    description: "django.utils.timezone.utc, removed in 5.0."
+    matcher:
+      type: regex
+      pattern: 'from\s+django\.utils\.timezone\s+import\s+[^\n]*\butc\b|(?<![.\w])timezone\.utc\b'
+    extensions: [".py"]
+    severity: error
+    auto_fixable: true
+    fix_hint: "Replaced with datetime.timezone.utc by django-upgrade (utils_timezone)."
+    docs_url: https://docs.djangoproject.com/en/5.2/releases/5.0/#features-removed-in-5-0
+    # timezone.utc from the standard library's datetime module is fine.
+    skip_if_file_matches: '^from datetime import [^\n]*\btimezone\b'
+
+  - id: index-together
+    description: "Meta.index_together, removed in 5.1."
+    matcher:
+      type: regex
+      pattern: '^\s*index_together\s*='
+    extensions: [".py"]
+    exclude: ['(^|/)migrations/']
+    severity: error
+    auto_fixable: true
+    fix_hint: "Converted to Meta.indexes by django-upgrade (index_together); the stage runs makemigrations for the app, which writes a RenameIndex migration."
+    docs_url: https://docs.djangoproject.com/en/5.2/releases/5.1/#features-removed-in-5-1
+
+  - id: test-client-http-headers
+    description: "HTTP_* keyword arguments to the test client; 4.2 adds headers={...}."
+    matcher:
+      type: regex
+      pattern: '\bself\.client\.\w+\(.*\bHTTP_[A-Z_]+\s*='
+    extensions: [".py"]
+    severity: info
+    auto_fixable: true
+    fix_hint: "Rewritten to headers={...} by django-upgrade (test_http_headers)."
+    docs_url: https://docs.djangoproject.com/en/5.2/releases/4.2/#tests
+
+  - id: assert-form-error-response
+    description: "assertFormError / assertFormsetError with a response, removed in 5.0; assertFormsetError and assertQuerysetEqual renamed (old names removed in 5.1)."
+    matcher:
+      type: regex
+      pattern: '\bassert(FormError|FormsetError|FormSetError)\(\s*\w+\s*,\s*["'']|\bassert(FormsetError|QuerysetEqual)\('
+    extensions: [".py"]
+    severity: error
+    auto_fixable: true
+    fix_hint: "Rewritten by django-upgrade (assert_form_error, assert_set_methods): the form or formset from response.context, and assertFormSetError / assertQuerySetEqual."
+    docs_url: https://docs.djangoproject.com/en/5.2/releases/5.0/#features-removed-in-5-0
+
+  - id: check-constraint-check
+    description: "CheckConstraint(check=...), deprecated in 5.1 for condition= (removed in 6.0)."
+    matcher:
+      type: regex
+      pattern: '\bCheckConstraint\(\s*check\s*=|^\s*check\s*=\s*models\.Q\('
+    extensions: [".py"]
+    severity: warn
+    auto_fixable: true
+    fix_hint: "Renamed to condition= by django-upgrade (check_constraint_condition, target 5.1), in models and migrations."
+    docs_url: https://docs.djangoproject.com/en/5.2/releases/5.1/#features-deprecated-in-5-1
+
+  - id: format-html-str-format
+    description: "format_html(\"...\".format(...)), deprecated in 5.0: no arguments means no escaping (removed in 6.0)."
+    matcher:
+      type: regex
+      pattern: '\bformat_html\(\s*["''][^"'']*["'']\.format\('
+    extensions: [".py"]
+    severity: warn
+    auto_fixable: true
+    fix_hint: "Rewritten to format_html(\"...\", ...) by django-upgrade (format_html). The values are escaped from then on: values that held HTML now render it as text."
+    docs_url: https://docs.djangoproject.com/en/5.2/releases/5.0/#features-deprecated-in-5-0
+
+  - id: format-html-no-args
+    description: "format_html() with a %-formatted or f-string template and no arguments, deprecated in 5.0 (removed in 6.0); the values are not escaped."
+    matcher:
+      type: regex
+      pattern: '\bformat_html\(\s*(f["'']|["''][^"'']*["'']\s*%)'
+    extensions: [".py"]
+    severity: warn
+    auto_fixable: false
+    fix_hint: "django-upgrade only rewrites \"...\".format(...). Pass the values as arguments (format_html(\"<b>{}</b>\", value)) so they are escaped, or use mark_safe() for HTML that is trusted."
+    docs_url: https://docs.djangoproject.com/en/5.2/releases/5.0/#features-deprecated-in-5-0
+
+  - id: staticfiles-find-all
+    description: "finders.find(path, all=True), deprecated in 5.2 for find_all=True."
+    matcher:
+      type: regex
+      pattern: '\bfind\([^)]*\ball\s*=\s*True'
+    extensions: [".py"]
+    severity: info
+    auto_fixable: true
+    fix_hint: "Renamed to find_all=True by django-upgrade (staticfiles_find_all)."
+    docs_url: https://docs.djangoproject.com/en/5.2/releases/5.2/#features-deprecated-in-5-2
+
+  - id: save-positional-arguments
+    description: "Model.save() / asave() with positional arguments, deprecated in 5.1 (removed in 6.0)."
+    matcher:
+      type: regex
+      pattern: '\.a?save\(\s*(True|False|None|\[)'
+    extensions: [".py"]
+    severity: warn
+    auto_fixable: false
+    fix_hint: "Pass keyword arguments: save(force_insert=..., force_update=..., using=..., update_fields=[...])."
+    docs_url: https://docs.djangoproject.com/en/5.2/releases/5.1/#features-deprecated-in-5-1
+
+  - id: urlfield-assume-scheme
+    description: "forms.URLField without assume_scheme. The default scheme for scheme-less input changes from http to https in 6.0 (deprecated in 5.0)."
+    matcher:
+      type: regex
+      pattern: '\bforms\.URLField\((?![^)]*assume_scheme)'
+    extensions: [".py"]
+    severity: info
+    auto_fixable: false
+    fix_hint: "Pass assume_scheme=\"http\" to keep today's behaviour or \"https\" for the 6.0 default, or set FORMS_URLFIELD_ASSUME_HTTPS = True."
+    docs_url: https://docs.djangoproject.com/en/5.2/releases/5.0/#forms
+
+  - id: removed-5-1-apis
+    description: "APIs removed in 5.0/5.1 without a django-upgrade fixer: get_storage_class(), make_random_password(), the length_is filter, SERIALIZE test setting, CSRF_COOKIE_MASKED."
+    matcher:
+      type: regex
+      pattern: '\bget_storage_class\(|\bmake_random_password\(|\|length_is:|["'']SERIALIZE["'']\s*:|^\s*CSRF_COOKIE_MASKED\s*='
+    extensions: [".py", ".html", ".txt"]
+    severity: error
+    auto_fixable: false
+    fix_hint: "get_storage_class → storages[\"alias\"] or import_string; make_random_password → django.utils.crypto.get_random_string; {% if x|length_is:n %} → {% if x|length == n %}; remove SERIALIZE and CSRF_COOKIE_MASKED."
+    docs_url: https://docs.djangoproject.com/en/5.2/releases/5.1/#features-removed-in-5-1
+
+  - id: logout-get
+    description: "Logging out with a GET link; LogoutView accepts only POST since 5.0."
+    matcher:
+      type: regex
+      pattern: '<a\b[^>]*href=["'']\{%\s*url\s+["'']logout["'']'
+    extensions: [".html"]
+    severity: error
+    auto_fixable: false
+    fix_hint: "Replace the link with a small form that POSTs to the logout URL with {% csrf_token %}."
+    docs_url: https://docs.djangoproject.com/en/5.2/releases/5.0/#features-removed-in-5-0

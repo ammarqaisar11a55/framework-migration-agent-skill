@@ -7,11 +7,13 @@ without a smoke probe either, that the test run loaded the migrated modules.
 | Pack | Fixtures | Compile pass % | Test parity % | Finding precision | Finding recall | Manual items |
 |---|---|---|---|---|---|---|
 | `angular-major-upgrade` | 4 | 100% | 100% | 100% | 100% | 2 |
+| `django-major-upgrade` | 4 | 100% | 100% | 100% | 100% | 3 |
 | `eslint-flat-config` | 4 | 100% | 100% | 100% | 100% | 0 |
 | `express-4-to-5` | 5 | 100% | 100% | 100% | 100% | 5 |
 | `express-js-to-ts` | 5 | 100% | 100% | 100% | 100% | 5 |
 | `nextjs-major-upgrade` | 4 | 100% | 100% | 100% | 100% | 3 |
 | `node-cjs-to-esm` | 4 | 100% | 100% | 100% | 100% | 7 |
+| `pydantic-1-to-2` | 4 | 100% | 100% | 100% | 100% | 12 |
 | `react-major-upgrade` | 4 | 100% | 100% | 100% | 100% | 7 |
 | `svelte-4-to-5` | 4 | 100% | 100% | 100% | 100% | 4 |
 | `tailwind-3-to-4` | 4 | 100% | 100% | 100% | 100% | 6 |
@@ -24,6 +26,15 @@ without a smoke probe either, that the test run loaded the migrated modules.
 | 02-default-change-detection | positive | yes | 1/1 yes | 2 / 0 / 0 | — | yes | 0 |
 | 03-template-semantics | positive | yes | 4/4 yes | 3 / 0 / 0 | — | yes | 0 |
 | 04-router-navigation-state | negative | yes | 2/2 yes | 2 / 0 / 0 | yes | yes | 2 |
+
+## django-major-upgrade
+
+| Fixture | Kind | Compiles | Tests (after/baseline) | Findings TP / FP / FN | Negative patterns kept | Matches after/ | Manual items |
+|---|---|---|---|---|---|---|---|
+| 01-settings-and-tests | positive | yes | 6/6 yes | 10 / 0 / 0 | — | yes | 0 |
+| 02-tests-and-choices | positive | yes | 6/6 yes | 4 / 0 / 0 | — | yes | 0 |
+| 03-pyproject-constraints | positive | yes | 5/5 yes | 5 / 0 / 0 | — | yes | 0 |
+| 04-deprecated-until-6 | negative | yes | 5/5 yes | 3 / 0 / 0 | yes | yes | 3 |
 
 ## eslint-flat-config
 
@@ -71,6 +82,15 @@ without a smoke probe either, that the test run loaded the migrated modules.
 | 02-shapes-and-packages | positive | yes | 4/4 yes | 13 / 0 / 0 | — | yes | 0 |
 | 03-entry-lazy-dotenv | positive | yes | 4/4 yes | 19 / 0 / 0 | — | yes | 3 |
 | 04-unconvertible | negative | yes | 4/4 yes | 20 / 0 / 0 | yes | yes | 4 |
+
+## pydantic-1-to-2
+
+| Fixture | Kind | Compiles | Tests (after/baseline) | Findings TP / FP / FN | Negative patterns kept | Matches after/ | Manual items |
+|---|---|---|---|---|---|---|---|
+| 01-models-and-validators | positive | yes | 6/6 yes | 10 / 0 / 0 | — | yes | 4 |
+| 02-settings-and-config | positive | yes | 7/7 yes | 6 / 0 / 0 | — | yes | 1 |
+| 03-generics-and-validators | positive | yes | 5/5 yes | 7 / 0 / 0 | — | yes | 3 |
+| 04-deprecated-methods | negative | yes | 4/4 yes | 4 / 0 / 0 | yes | yes | 4 |
 
 ## react-major-upgrade
 

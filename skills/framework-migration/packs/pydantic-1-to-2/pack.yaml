@@ -1,0 +1,32 @@
+id: pydantic-1-to-2
+title: Pydantic v1 → v2
+ecosystem: python
+tier: 1
+status: shipped
+
+from: { framework: pydantic, versions: "1.x" }
+to:   { framework: pydantic, versions: "2.x" }
+
+tools:
+  # bump-pydantic and the dependencies it does not bound, installed together in the tool's virtualenv.
+  - { name: bump-pydantic, version: "0.8.0", role: engine }
+  - { name: libcst, version: "1.9.0", role: engine }
+  - { name: typer, version: "0.12.5", role: engine }
+  - { name: click, version: "8.1.8", role: engine }
+  - { name: rich, version: "13.9.4", role: engine }
+  - { name: typing-extensions, version: "4.15.0", role: engine }
+  - { name: pydantic, version: "2.13.5", role: dependency }
+  - { name: pydantic-settings, version: "2.15.0", role: dependency }
+
+stages:
+  - id: pydantic-2
+    title: Run bump-pydantic, pin Pydantic 2, and fix what Pydantic 2 rejects at import time
+    commands:
+      - run: "node {pack_dir}/codemods/bump-pydantic.mjs"
+        dry_run: "node {pack_dir}/codemods/bump-pydantic.mjs --dry-run"
+    codemods: [finish-bump.js]
+    fix_rules: true
+    post_commands: ["node {pack_dir}/codemods/install-requirements.mjs"]
+
+checks:
+  test: "python -m pytest -q"

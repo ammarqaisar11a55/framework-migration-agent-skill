@@ -11,6 +11,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } fr
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { adapterFor } from "../skills/framework-migration/engine/adapters.ts";
 import { runChecks, type StageCheck } from "../skills/framework-migration/engine/check.ts";
 import { detect } from "../skills/framework-migration/engine/detect.ts";
 import { exec } from "../skills/framework-migration/engine/exec.ts";
@@ -73,7 +74,10 @@ function declaredVersions(fixtures: Fixture[]): Map<string, Set<string>> {
  * tools, `npm install`) run for real.
  */
 const needsIsolation = (pack: Pack, fixtures: Fixture[]): boolean =>
-  pack.stages.some((stage) => (stage.commands ?? []).length > 0) || [...declaredVersions(fixtures).values()].some((v) => v.size > 1);
+  // Other ecosystems install each fixture with their own tooling (adapter.install).
+  pack.ecosystem !== "node" ||
+  pack.stages.some((stage) => (stage.commands ?? []).length > 0) ||
+  [...declaredVersions(fixtures).values()].some((v) => v.size > 1);
 
 /** Dependencies of every fixture plus the pack's tools, installed once and shared via Node's upward lookup. */
 function installDependencies(pack: Pack, fixtures: Fixture[], workRoot: string): string {
@@ -100,13 +104,19 @@ async function scoreFixture(pack: Pack, fixture: Fixture, depsDir: string, isola
   const work = join(depsDir, fixture.name);
   rmSync(work, { recursive: true, force: true });
   cpSync(join(fixture.dir, "before"), work, { recursive: true });
-  // Isolated: no lockfile, so the migrated tree compares against after/ without one.
-  const env = isolated
-    ? { ...process.env, npm_config_package_lock: "false" }
-    : { ...process.env, PATH: `${join(depsDir, "node_modules", ".bin")}${delimiter}${process.env["PATH"] ?? ""}` };
+  const adapter = adapterFor(pack.ecosystem);
+  // Isolated: no lockfile, so the migrated tree compares against after/ without one. A virtualenv's
+  // bin (adapter.binDirs) comes first on PATH, as if the project's environment were activated.
+  const binDirs = isolated ? (adapter.binDirs ?? []).map((dir) => join(work, dir)) : [join(depsDir, "node_modules", ".bin")];
+  const env = {
+    ...process.env,
+    ...(isolated ? { npm_config_package_lock: "false" } : {}),
+    PATH: [...binDirs, process.env["PATH"] ?? ""].join(delimiter),
+  };
   const problems: string[] = [];
   if (isolated) {
-    const install = exec(process.env["FM_EVALS_INSTALL"] ?? "npm install --no-audit --no-fund", { cwd: work, env });
+    const command = adapter.install ?? process.env["FM_EVALS_INSTALL"] ?? "npm install --no-audit --no-fund";
+    const install = exec(command, { cwd: work, env });
     if (install.exitCode !== 0) throw new Error(`Installing ${fixture.name} failed:\n${install.output}`);
   }
   const expectation = fixture.expectation;
@@ -244,7 +254,7 @@ async function main(): Promise<void> {
     const isolated = needsIsolation(pack, fixtures);
     // Isolated work directories must not sit below a shared node_modules.
     const depsDir = isolated ? join(workRoot, `${pack.id}-isolated`) : installDependencies(pack, fixtures, workRoot);
-    if (isolated) console.log(`  the pack runs official tools or changes dependency versions: installing each fixture in ${depsDir}`);
+    if (isolated) console.log(`  installing each fixture on its own (official tools, changed dependency versions, or a non-Node ecosystem) in ${depsDir}`);
     const results: FixtureScore[] = [];
     for (const fixture of fixtures) {
       const score = await scoreFixture(pack, fixture, depsDir, isolated);
