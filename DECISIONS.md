@@ -330,3 +330,31 @@ array and function defaults would become a new value per render and are reported
 `node --test` with `--import tsx` and `"jsx": "react-jsx"` (`allowJs` so tsx applies it to `.jsx`),
 `jsdom` 29.1.1 for DOM tests (30.x needs Node 22.22.2), and `--test-force-exit` because React 17's
 scheduler keeps a `MessageChannel` open under a `window`.
+
+## M9 — `tailwind-3-to-4`
+
+### D41. The official upgrade tool runs on a scratch copy with its own install
+`@tailwindcss/upgrade` (4.3.3) has no dry-run, needs the project's v3 dependencies installed to
+read the config, and installs v4 packages itself. `official-upgrade.mjs` copies the project, runs
+`npm ci` (or `npm install` without a lockfile), runs the tool with `--force`, prints the diff and
+copies changes back only on `--apply`. npm's `package_lock` environment variables are removed for
+the tool's own installs, and a lockfile the scratch install created is dropped when the project had
+none.
+
+### D42. Opacity utilities the tool leaves are merged into their colour
+The tool rewrites `bg-opacity-50` only next to a colour it can resolve. `finish-upgrade.js` merges a
+leftover `*-opacity-N` into the one colour utility of the same kind and variant in the same class
+list (`bg-blue-500 bg-opacity-50` → `bg-blue-500/50`); with zero or several candidates it is left
+for rule `opacity-utilities`. Colours are the default palette plus `--color-*` names declared in the
+project's CSS.
+
+### D43. CLI builds get `@tailwindcss/cli`
+v4 moved the `tailwindcss` binary to `@tailwindcss/cli`, which the tool does not add. When a
+package.json script runs `tailwindcss`, the codemod adds `@tailwindcss/cli` at the same version as
+`tailwindcss`.
+
+### D44. No rules for renamed utilities
+The tool renames `shadow-sm`, `rounded`, `outline-none` and the rest from its own tables; a
+regex rule would also flag the v4 names after the upgrade (`shadow-sm` exists in both with
+different meanings). The rules cover what the tool reports but does not change: JS config with
+plugins, `theme()` calls, `@layer` utilities and removed config options.

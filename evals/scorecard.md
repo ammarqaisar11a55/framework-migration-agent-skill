@@ -11,6 +11,7 @@ without a smoke probe either, that the test run loaded the migrated modules.
 | `express-js-to-ts` | 5 | 100% | 100% | 100% | 100% | 5 |
 | `node-cjs-to-esm` | 4 | 100% | 100% | 100% | 100% | 7 |
 | `react-major-upgrade` | 4 | 100% | 100% | 100% | 100% | 7 |
+| `tailwind-3-to-4` | 4 | 100% | 100% | 100% | 100% | 6 |
 
 ## eslint-flat-config
 
@@ -58,3 +59,12 @@ without a smoke probe either, that the test run loaded the migrated modules.
 | 02-string-refs | positive | yes | 1/1 yes | 3 / 0 / 0 | — | yes | 0 |
 | 03-function-defaults | positive | yes | 3/3 yes | 4 / 0 / 0 | — | yes | 4 |
 | 04-deprecated-but-working | negative | yes | 1/1 yes | 3 / 0 / 0 | yes | yes | 3 |
+
+## tailwind-3-to-4
+
+| Fixture | Kind | Compiles | Tests (after/baseline) | Findings TP / FP / FN | Negative patterns kept | Matches after/ | Manual items |
+|---|---|---|---|---|---|---|---|
+| 01-cli-renames | positive | yes | 5/5 yes | 5 / 0 / 0 | — | yes | 1 |
+| 02-postcss-jsx | positive | yes | 5/5 yes | 6 / 0 / 0 | — | yes | 1 |
+| 03-custom-css | positive | yes | 4/4 yes | 7 / 0 / 0 | — | yes | 1 |
+| 04-js-plugin | negative | yes | 3/3 yes | 5 / 0 / 0 | yes | yes | 3 |

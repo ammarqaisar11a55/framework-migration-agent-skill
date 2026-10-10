@@ -113,7 +113,7 @@ Tier 1 = automated, 2 = partially automated, 3 = assist mode (inventory, finding
 | `nextjs-major-upgrade` | Next.js majors; Pages → App Router | 1 | planned |
 | `angular-major-upgrade` | Angular majors | 1 | planned |
 | `svelte-4-to-5` | Svelte 4 → 5 | 1 | planned |
-| `tailwind-3-to-4` | Tailwind v3 → v4 | 1 | planned |
+| [`tailwind-3-to-4`](skills/framework-migration/packs/tailwind-3-to-4) | Tailwind v3 → v4 | 1 | shipped |
 | `django-major-upgrade` | Django majors | 1 | planned |
 | `pydantic-1-to-2` | Pydantic v1 → v2 | 1 | planned |
 | `javax-to-jakarta` | Java EE → Jakarta EE | 1 | planned |
