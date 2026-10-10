@@ -1,13 +1,8 @@
-import {
-  Component,
-  EventEmitter,
-  Input,
-  Output,
-  ChangeDetectionStrategy,
-} from "@angular/core";
+import { Component, EventEmitter, Input, Output, ChangeDetectionStrategy } from '@angular/core';
+
 
 @Component({
-  selector: "app-greeting",
+  selector: 'app-greeting',
   imports: [],
   changeDetection: ChangeDetectionStrategy.Eager,
   template: `
@@ -23,10 +18,10 @@ import {
     </ul>
     <p>
       @switch (mood) {
-        @case ("happy") {
+        @case ('happy') {
           <span>Feeling good</span>
         }
-        @case ("tired") {
+        @case ('tired') {
           <span>Needs coffee</span>
         }
         @default {
@@ -35,12 +30,12 @@ import {
       }
     </p>
     <button (click)="greet.emit(name)">Greet</button>
-  `,
+    `,
 })
 export class Greeting {
-  @Input() name = "";
+  @Input() name = '';
   @Input() items: string[] = [];
-  @Input() mood = "other";
+  @Input() mood = 'other';
   @Output() greet = new EventEmitter<string>();
 
   byValue(_index: number, item: string) {

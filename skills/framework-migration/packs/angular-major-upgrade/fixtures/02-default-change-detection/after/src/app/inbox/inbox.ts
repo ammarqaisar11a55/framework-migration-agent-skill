@@ -1,15 +1,9 @@
-import {
-  Component,
-  OnDestroy,
-  OnInit,
-  inject,
-  ChangeDetectionStrategy,
-} from "@angular/core";
-import { Subscription } from "rxjs";
-import { MessageFeed } from "./message-feed";
+import { Component, OnDestroy, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Subscription } from 'rxjs';
+import { MessageFeed } from './message-feed';
 
 @Component({
-  selector: "app-inbox",
+  selector: 'app-inbox',
   changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <p class="count">{{ messages.length }} message(s)</p>
@@ -26,7 +20,7 @@ export class Inbox implements OnInit, OnDestroy {
   private subscription?: Subscription;
   // Plain fields, mutated outside template events: rendered by default (eager) change detection.
   messages: string[] = [];
-  status = "idle";
+  status = 'idle';
 
   ngOnInit() {
     this.subscription = this.feed.messages.subscribe((message) => {

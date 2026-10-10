@@ -1,4 +1,4 @@
-import { Component, Input, ChangeDetectionStrategy } from "@angular/core";
+import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
 
 export interface User {
   name: string;
@@ -6,10 +6,10 @@ export interface User {
 }
 
 @Component({
-  selector: "app-profile",
+  selector: 'app-profile',
   changeDetection: ChangeDetectionStrategy.Eager,
   template: `
-    <h2>{{ user?.name ?? "Guest" }}</h2>
+    <h2>{{ user?.name ?? 'Guest' }}</h2>
     @if ($safeNavigationMigration(user?.address) === null) {
       <p class="address">No address on file</p>
     } @else {
@@ -21,7 +21,7 @@ export interface User {
 })
 export class Profile {
   @Input() user: User | null = null;
-  nickname = "";
+  nickname = '';
 
   rename(value: string) {
     this.nickname = value.trim();
