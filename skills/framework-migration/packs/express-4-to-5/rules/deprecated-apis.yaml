@@ -1,0 +1,269 @@
+# Express 4 APIs that Express 5 removes or changes. Sources: references/official-sources.md.
+# AST selectors are esquery selectors over the ESTree AST. Rules marked auto_fixable mirror what the
+# official codemods (stage api-codemods) or this pack's codemods change; everything else is a
+# manual item.
+
+exclude:
+  - '(^|/)\.[^/]+$'
+  - '(^|/)[^/]+\.config\.[cm]?[jt]s$'
+
+rules:
+  # --- Removed APIs: official codemods ------------------------------------------------------------
+  - id: app-del
+    description: app.del() / router.del() was removed; use .delete().
+    matcher:
+      type: ast
+      selector: 'CallExpression[callee.property.name="del"][arguments.1]:matches([arguments.0.value=/^[\/*]/], [arguments.0.regex], [arguments.0.type="ArrayExpression"])'
+    severity: error
+    auto_fixable: true
+    fix_hint: Renamed to .delete() by route-del.js, for calls that look like route registrations (a path starting with '/' or '*', a RegExp or an array, then a handler). Other .del() calls are left alone.
+    docs_url: https://expressjs.com/en/guide/migrating-5.html
+
+  - id: req-param
+    description: req.param(name) was removed.
+    matcher:
+      type: ast
+      selector: 'CallExpression[callee.property.name="param"][arguments.0.type="Literal"]:not([arguments.1])'
+    severity: error
+    auto_fixable: true
+    fix_hint: Rewritten by the official explicit-request-params codemod to req.params.<name> (req.body / req.query for those names). Express 4 also looked in req.body and req.query; check the value really comes from the route.
+    docs_url: https://expressjs.com/en/guide/migrating-5.html
+
+  - id: status-in-send
+    description: res.send(status), res.send(body, status), res.json(obj, status) and res.jsonp(obj, status) were removed.
+    matcher:
+      type: ast
+      selector: >-
+        CallExpression[callee.property.name="send"][arguments.0.type="Literal"][arguments.0.raw=/^[0-9]+$/]:not([arguments.1]),
+        CallExpression[callee.property.name=/^(send|json|jsonp)$/][arguments.1.type="Literal"][arguments.1.raw=/^[0-9]+$/],
+        CallExpression[callee.property.name=/^(send|json|jsonp)$/][arguments.0.type="Literal"][arguments.0.raw=/^[0-9]+$/][arguments.1]
+    severity: error
+    auto_fixable: true
+    fix_hint: Rewritten by the official status-send-order codemod to res.sendStatus(status) or res.status(status).send/json/jsonp(body).
+    docs_url: https://expressjs.com/en/guide/migrating-5.html
+
+  - id: redirect-arg-order
+    description: res.redirect(url, status) was removed; the status comes first.
+    matcher:
+      type: ast
+      selector: 'CallExpression[callee.property.name="redirect"][arguments.1.type="Literal"][arguments.1.raw=/^[0-9]+$/]'
+    severity: error
+    auto_fixable: true
+    fix_hint: Rewritten by the official redirect-arg-order codemod to res.redirect(status, url).
+    docs_url: https://expressjs.com/en/guide/migrating-5.html
+
+  - id: redirect-back
+    description: The magic string 'back' in res.redirect() / res.location() was removed.
+    matcher:
+      type: ast
+      selector: 'CallExpression[callee.property.name=/^(redirect|location)$/][arguments.0.value="back"]'
+    severity: error
+    auto_fixable: true
+    fix_hint: Rewritten by the official back-redirect-deprecated codemod to req.get('Referrer') || '/'.
+    docs_url: https://expressjs.com/en/guide/migrating-5.html
+
+  - id: res-sendfile
+    description: res.sendfile() was removed; use res.sendFile().
+    matcher:
+      type: ast
+      selector: 'CallExpression[callee.property.name="sendfile"]'
+    severity: error
+    auto_fixable: true
+    fix_hint: Renamed by the official camelcase-sendfile codemod. res.sendFile() needs an absolute path or a `root` option; check relative paths.
+    docs_url: https://expressjs.com/en/guide/migrating-5.html
+
+  - id: singular-accepts
+    description: req.acceptsCharset / acceptsEncoding / acceptsLanguage were removed; use the plural forms.
+    matcher:
+      type: ast
+      selector: 'CallExpression[callee.property.name=/^(acceptsCharset|acceptsEncoding|acceptsLanguage)$/]'
+    severity: error
+    auto_fixable: true
+    fix_hint: Renamed by the official pluralize-method-names codemod (zero or one argument) and by accepts-plural.js (any number of arguments).
+    docs_url: https://expressjs.com/en/guide/migrating-5.html
+
+  - id: static-mime
+    description: express.static.mime was removed.
+    matcher:
+      type: ast
+      selector: 'MemberExpression[object.property.name="static"][property.name="mime"]'
+    severity: error
+    auto_fixable: true
+    fix_hint: Replaced by the official static-mime codemod with the mime-types package (added to package.json).
+    docs_url: https://expressjs.com/en/guide/migrating-5.html
+
+  # --- Removed APIs: manual -------------------------------------------------------------------------
+  - id: param-function
+    description: app.param(fn) / router.param(fn) (a function as the only argument) was removed.
+    matcher:
+      type: ast
+      selector: 'CallExpression[callee.property.name="param"][arguments.0.type=/^(FunctionExpression|ArrowFunctionExpression)$/]:not([arguments.1])'
+    severity: error
+    auto_fixable: false
+    fix_hint: The custom param() hook has no replacement; move the logic into the param(name, fn) callbacks or a middleware.
+    docs_url: https://expressjs.com/en/guide/migrating-5.html
+
+  - id: param-leading-colon
+    description: A leading colon in app.param(name, fn) is no longer stripped.
+    matcher:
+      type: ast
+      selector: 'CallExpression[callee.property.name="param"][arguments.0.type="Literal"][arguments.0.value=/^:/][arguments.1]'
+    severity: error
+    auto_fixable: false
+    fix_hint: Remove the colon from the name (app.param('id', fn)).
+    docs_url: https://expressjs.com/en/guide/migrating-5.html
+
+  - id: router-param-array
+    description: router.param() no longer accepts an array of names (app.param() still does).
+    matcher:
+      type: ast
+      selector: 'CallExpression[callee.property.name="param"][arguments.0.type="ArrayExpression"]'
+    severity: warn
+    auto_fixable: false
+    fix_hint: On a router, register each name with its own router.param(name, fn) call. On the app object this is still valid.
+    docs_url: https://expressjs.com/en/guide/migrating-5.html
+
+  # --- Route path syntax: path-syntax.js ------------------------------------------------------------
+  - id: route-optional-param
+    description: The `?` optional-parameter suffix is no longer supported in route paths.
+    matcher:
+      type: ast
+      selector: 'CallExpression[callee.property.name=/^(get|post|put|patch|delete|del|all|options|head|use|route)$/][arguments.0.type="Literal"][arguments.0.value=/:[A-Za-z_$][A-Za-z0-9_$]*\?/]'
+    severity: error
+    auto_fixable: true
+    fix_hint: Rewritten by path-syntax.js to braces, '/:id?' → '{/:id}' and '.:ext?' → '{.:ext}'. Matching is unchanged; an unmatched parameter is now absent from req.params instead of undefined.
+    docs_url: https://expressjs.com/en/guide/migrating-5.html
+
+  - id: route-unnamed-wildcard
+    description: An unnamed `*` wildcard in a route path; Express 5 requires a name.
+    matcher:
+      type: ast
+      selector: 'CallExpression[callee.property.name=/^(get|post|put|patch|delete|del|all|options|head|use|route)$/][arguments.0.type="Literal"][arguments.0.value=/[*]($|[^A-Za-z_$])/]'
+    severity: error
+    auto_fixable: true
+    fix_hint: Rewritten by path-syntax.js to '{*splat}', which matches what Express 4's '*' matched, including the empty string. The value moves from req.params[0] to req.params.splat and becomes an array of segments; the codemod leaves the path alone if any file reads req.params by index.
+    docs_url: https://expressjs.com/en/guide/migrating-5.html
+
+  - id: route-reserved-chars
+    description: A route path with regular-expression syntax ( ( ) [ ] + ! ), which Express 5 rejects.
+    matcher:
+      type: ast
+      selector: 'CallExpression[callee.property.name=/^(get|post|put|patch|delete|del|all|options|head|use|route)$/][arguments.0.type="Literal"][arguments.0.value=/[()+!]|\[|\]/]'
+    severity: error
+    auto_fixable: false
+    fix_hint: "Rewrite by hand: list the alternatives as an array of paths, use a RegExp object, or escape the character with a backslash. Custom parameter patterns such as ':id(\\d+)' are no longer supported: validate the value in the handler."
+    docs_url: https://expressjs.com/en/guide/migrating-5.html
+
+  - id: req-params-index
+    description: req.params read by index — Express 5 names every wildcard and makes its value an array.
+    matcher:
+      type: ast
+      selector: 'MemberExpression[computed=true][object.property.name="params"][property.type="Literal"]'
+    severity: warn
+    auto_fixable: false
+    fix_hint: After the wildcard is named ('{*splat}'), read req.params.splat, which is an array of path segments (join('/') gives the Express 4 string). path-syntax.js does not rename wildcards while such reads exist.
+    docs_url: https://expressjs.com/en/guide/migrating-5.html
+
+  - id: dynamic-route-path
+    description: A route path that is not a literal; its Express 5 syntax cannot be checked statically.
+    matcher:
+      type: ast
+      selector: 'CallExpression[callee.property.name=/^(get|post|put|patch|delete|all|options|head)$/][arguments.1]:not([arguments.0.type="Literal"]):not([arguments.0.type="ArrayExpression"]):not([arguments.0.type=/Function/])'
+    severity: warn
+    auto_fixable: false
+    fix_hint: Check the value the path is built from against the Express 5 path syntax (no '*' without a name, no '?', no regular-expression characters).
+    docs_url: https://expressjs.com/en/guide/migrating-5.html
+
+  - id: computed-route-method
+    description: A routing method called through a computed property (app[method](...)); the codemods cannot see these calls.
+    matcher:
+      type: ast
+      selector: 'CallExpression[callee.type="MemberExpression"][callee.computed=true][callee.object.name=/^(app|router|api)$/i]'
+    severity: warn
+    auto_fixable: false
+    fix_hint: Check the method names it can take (del is gone) and the paths it registers.
+    docs_url: https://expressjs.com/en/guide/migrating-5.html
+
+  # --- Changed defaults: preserve-defaults stage -------------------------------------------------------
+  - id: query-parser-default
+    description: The default query parser changes from "extended" (nested objects) to "simple".
+    matcher:
+      type: ast
+      selector: 'Program:not(:has(CallExpression[callee.property.name="set"][arguments.0.value="query parser"])) VariableDeclarator > CallExpression.init[callee.name="express"]:not([arguments.0])'
+    severity: warn
+    auto_fixable: true
+    fix_hint: query-parser.js adds app.set('query parser', 'extended') after the app is created, which keeps Express 4's parsing. Remove it later if nothing reads nested query parameters.
+    docs_url: https://expressjs.com/en/guide/migrating-5.html
+
+  - id: urlencoded-extended-default
+    description: urlencoded() without `extended` — the default changes from true to false.
+    matcher:
+      type: ast
+      selector: 'CallExpression[callee.property.name="urlencoded"]:not(:has(Property[key.name="extended"]))'
+    severity: warn
+    auto_fixable: true
+    fix_hint: urlencoded-extended.js sets extended to true, which keeps Express 4's parsing.
+    docs_url: https://expressjs.com/en/guide/migrating-5.html
+
+  # --- Changed behaviour: manual review ------------------------------------------------------------
+  - id: static-dotfiles
+    description: express.static() without a dotfiles option — Express 5 also ignores files inside dot-directories (such as .well-known), which Express 4 served.
+    matcher:
+      type: ast
+      selector: 'CallExpression[callee.object.name="express"][callee.property.name="static"]:not(:has(Property[key.name="dotfiles"]))'
+    severity: warn
+    auto_fixable: false
+    fix_hint: "If the directory contains a dot-directory that must be served, mount it on its own with { dotfiles: 'allow' }, as the migration guide shows. Do not set 'allow' on the whole directory: Express 4 did not serve dotfiles such as .env, and 'allow' would."
+    docs_url: https://expressjs.com/en/guide/migrating-5.html
+
+  - id: sendfile-dotfiles
+    description: res.sendFile() without a dotfiles option — Express 5 no longer sends files inside dot-directories by default.
+    matcher:
+      type: ast
+      selector: 'CallExpression[callee.property.name=/^send[Ff]ile$/]:not(:has(Property[key.name="dotfiles"]))'
+    severity: info
+    auto_fixable: false
+    fix_hint: "Check whether the path can point into a dot-directory. If it must, pass { dotfiles: 'allow' } for that call only, and make sure the path cannot be chosen by the client."
+    docs_url: https://expressjs.com/en/guide/migrating-5.html
+
+  - id: req-params-prototype
+    description: An Object.prototype method called on req.params, which has a null prototype in Express 5 (string paths).
+    matcher:
+      type: ast
+      selector: 'CallExpression[callee.object.property.name="params"][callee.property.name=/^(hasOwnProperty|isPrototypeOf|propertyIsEnumerable|toString|toLocaleString|valueOf)$/]'
+    severity: error
+    auto_fixable: false
+    fix_hint: Use Object.hasOwn(req.params, name) or the `in` operator instead; the method does not exist on a null-prototype object and the call throws.
+    docs_url: https://expressjs.com/en/guide/migrating-5.html
+
+  - id: req-query-write
+    description: Assignment to req.query or one of its properties; req.query is a getter in Express 5.
+    matcher:
+      type: ast
+      selector: >-
+        AssignmentExpression[left.object.name=/^(req|request)$/][left.property.name="query"],
+        AssignmentExpression[left.object.object.name=/^(req|request)$/][left.object.property.name="query"]
+    severity: error
+    auto_fixable: false
+    fix_hint: Copy the values you need into a local variable or res.locals instead of writing to req.query.
+    docs_url: https://expressjs.com/en/guide/migrating-5.html
+
+  - id: clear-cookie-options
+    description: res.clearCookie() with options — Express 5 ignores maxAge and expires.
+    matcher:
+      type: ast
+      selector: 'CallExpression[callee.property.name="clearCookie"][arguments.1]'
+    severity: info
+    auto_fixable: false
+    fix_hint: Nothing to change unless the code relied on maxAge or expires; the cookie is still cleared. Keep path and domain, which must match the cookie.
+    docs_url: https://expressjs.com/en/guide/migrating-5.html
+
+  - id: req-host
+    description: req.host keeps the port number in Express 5.
+    matcher:
+      type: ast
+      selector: 'MemberExpression[object.name=/^(req|request)$/][property.name="host"]'
+    severity: info
+    auto_fixable: false
+    fix_hint: Use req.hostname for the name without the port.
+    docs_url: https://expressjs.com/en/guide/migrating-5.html

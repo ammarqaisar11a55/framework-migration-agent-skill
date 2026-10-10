@@ -7,12 +7,18 @@ export interface StackRef {
   framework: string;
   language?: string;
   versions: string;
+  /** Node packs: the package.json "type" the project must have. */
+  module_type?: "commonjs" | "module";
 }
 
 export interface PackTool {
   name: string;
   version: string;
   role?: "dependency" | "devDependency" | "engine";
+  /** Repository a tool run from source is fetched from. */
+  source?: string;
+  /** Commit of `source` the pack was verified with. */
+  ref?: string;
 }
 
 export type StageCommand = string | { run: string; dry_run: string };
@@ -66,6 +72,12 @@ export interface Rule {
   description: string;
   matcher: Matcher;
   extensions?: string[];
+  /** Regular expressions over the project-relative path; matching files are skipped. */
+  exclude?: string[];
+  /** Node: skip .cjs files and files under a nested package.json with "type": "commonjs". */
+  skip_explicit_commonjs?: boolean;
+  /** A regular expression over the whole file; a file it matches is skipped (code the migration deliberately keeps). */
+  skip_if_file_matches?: string;
   severity: Severity;
   auto_fixable: boolean;
   fix_hint: string;

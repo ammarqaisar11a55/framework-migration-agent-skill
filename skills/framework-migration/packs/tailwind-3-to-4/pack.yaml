@@ -1,0 +1,27 @@
+id: tailwind-3-to-4
+title: Tailwind CSS v3 → v4
+ecosystem: node
+tier: 1
+status: shipped
+
+from: { framework: tailwind, versions: "3.x" }
+to:   { framework: tailwind, versions: "4.x" }
+
+tools:
+  # The official upgrade tool, run by codemods/official-upgrade.mjs on a scratch copy.
+  - { name: "@tailwindcss/upgrade", version: "4.3.3", role: engine }
+  # Added by finish-upgrade.js when a script runs the Tailwind CLI.
+  - { name: "@tailwindcss/cli", version: "4.3.3", role: devDependency }
+
+stages:
+  - id: upgrade
+    title: Run @tailwindcss/upgrade (dependencies, configuration to CSS, templates), then fix what it leaves
+    commands:
+      - run: "node {pack_dir}/codemods/official-upgrade.mjs"
+        dry_run: "node {pack_dir}/codemods/official-upgrade.mjs --dry-run"
+    codemods: [finish-upgrade.js]
+    fix_rules: true
+    post_commands: ["npm install"]
+
+checks:
+  test: "npm test"

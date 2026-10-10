@@ -1,0 +1,32 @@
+id: eslint-flat-config
+title: ESLint eslintrc → flat config (ESLint 9)
+ecosystem: node
+tier: 1
+status: shipped
+
+from: { framework: eslint, versions: ">=8.0.0 <10.0.0" }
+to:   { framework: eslint, versions: "9.x" }
+
+tools:
+  # The official migrator, run by codemods/official-migrate.mjs (targets ESLint 9).
+  - { name: "@eslint/migrate-config", version: "3.0.3", role: engine }
+  # Pinned in the project by finish-flat-config.js (only the packages eslint.config.mjs imports).
+  - { name: eslint, version: "9.39.5", role: devDependency }
+  - { name: "@eslint/js", version: "9.39.5", role: devDependency }
+  - { name: globals, version: "17.13.0", role: devDependency }
+  - { name: "@eslint/eslintrc", version: "3.3.7", role: devDependency }
+  - { name: "@eslint/compat", version: "2.1.1", role: devDependency }
+
+stages:
+  - id: flat-config
+    title: Generate eslint.config.mjs with @eslint/migrate-config, upgrade to ESLint 9, update scripts and eslint-env comments
+    commands:
+      - run: "node {pack_dir}/codemods/official-migrate.mjs"
+        dry_run: "node {pack_dir}/codemods/official-migrate.mjs --dry-run"
+    codemods: [finish-flat-config.js]
+    fix_rules: true
+    post_commands: ["npm install"]
+
+checks:
+  lint: "npm run lint"
+  test: "npm test"

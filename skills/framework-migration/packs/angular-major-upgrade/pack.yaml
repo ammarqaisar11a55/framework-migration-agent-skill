@@ -1,0 +1,38 @@
+id: angular-major-upgrade
+title: Angular 20 → 21 → 22
+ecosystem: node
+tier: 1
+status: shipped
+
+from: { framework: angular, versions: "20.x || 21.x" }
+to:   { framework: angular, versions: "22.x" }
+
+tools:
+  # ng update runs at these CLI versions and updates to these core versions (codemods/ng-update.mjs).
+  - { name: "@angular/cli", version: "21.2.24", role: devDependency }
+  - { name: "@angular/core", version: "21.2.24", role: dependency }
+  - { name: "@angular/cli", version: "22.2.0", role: devDependency }
+  - { name: "@angular/core", version: "22.2.0", role: dependency }
+  # Passed to ng update only when the installed version is outside @angular/build's peer range.
+  - { name: vitest, version: "4.0.18", role: devDependency }
+  - { name: typescript, version: "6.0.3", role: devDependency }
+
+stages:
+  - id: angular-21
+    title: ng update to Angular 21 (control flow, tsconfig moduleResolution and lib)
+    commands:
+      - run: "node {pack_dir}/codemods/ng-update.mjs 21"
+        dry_run: "node {pack_dir}/codemods/ng-update.mjs 21 --dry-run"
+    post_commands: ["npm install"]
+  - id: angular-22
+    title: ng update to Angular 22 (Eager change detection, strictTemplates, safe navigation)
+    commands:
+      - run: "node {pack_dir}/codemods/ng-update.mjs 22"
+        dry_run: "node {pack_dir}/codemods/ng-update.mjs 22 --dry-run"
+    codemods: [finish-update.js]
+    fix_rules: true
+    post_commands: ["npm install"]
+
+checks:
+  typecheck: "npx ng build"
+  test: "npm test"

@@ -49,7 +49,7 @@ describe("buildInventory", () => {
   });
 
   it("detects the stack", () => {
-    expect(inventory.stacks).toMatchObject([{ ecosystem: "node", frameworks: [{ name: "express", version: "^4.18.2" }] }]);
+    expect(inventory.stacks).toMatchObject([{ ecosystem: "node", frameworks: [{ name: "express", version: "^4.18.2" }, { name: "node", version: "*" }] }]);
   });
 
   it("resolves local imports, including directory indexes, and records importers", () => {

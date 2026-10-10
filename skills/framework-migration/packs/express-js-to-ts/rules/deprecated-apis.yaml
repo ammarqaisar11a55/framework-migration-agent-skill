@@ -1,5 +1,13 @@
 # Patterns that matter when an Express app moves from JavaScript to TypeScript.
 # AST selectors are esquery selectors over the ESTree AST.
+
+# Tool configuration (dotfiles such as .eslintrc.js, and *.config.js / .cjs / .mjs) is loaded by the
+# tools, not by the app, and stays JavaScript: the codemods skip it (codemods/shared.js), so the
+# rules do too.
+exclude:
+  - '(^|/)\.[^/]+$'
+  - '(^|/)[^/]+\.config\.[cm]?js$'
+
 rules:
   - id: cjs-require
     description: Top-level require() of a module by a literal name.
@@ -49,14 +57,14 @@ rules:
     docs_url: https://www.typescriptlang.org/docs/handbook/modules/reference.html
 
   - id: nested-require
-    description: require() of a literal module name that is not a top-level declaration (lazy or conditional loading).
+    description: require() of a literal module name that is not a plain top-level declaration — lazy or conditional loading, or a call made on the result in the same expression (`require('dotenv').config()`).
     matcher:
       type: ast
       selector: >-
         CallExpression[callee.name="require"][arguments.0.type="Literal"]:not(Program > VariableDeclaration > VariableDeclarator > .init):not(Program > ExpressionStatement > .expression)
     severity: warn
     auto_fixable: false
-    fix_hint: Left unchanged because hoisting it to an import would change when the module loads. The result is typed `any`; convert it to `await import()` or a top-level import by hand if eager loading is acceptable.
+    fix_hint: Left unchanged, because rewriting it can change when the module loads or when its side effect runs relative to the other imports. The result is typed `any`. Inside a function, convert it to `await import()` or a top-level import by hand if eager loading is acceptable; at the top level, an `import x = require('x')` at the same position followed by the call keeps the order.
     docs_url: https://www.typescriptlang.org/docs/handbook/modules/reference.html
 
   - id: req-custom-property

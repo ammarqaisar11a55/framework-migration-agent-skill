@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
-import { extname, join, resolve } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, extname, join, resolve } from "node:path";
 import esquery from "esquery";
 import { adapterFor } from "./adapters.ts";
 import { JS_EXTENSIONS, parseSource, visitorKeys, type Node } from "./ast.ts";
@@ -35,6 +35,8 @@ export function matchRules(rules: readonly Rule[], path: string, source: string,
   let program: Node | undefined | null;
   for (const rule of rules) {
     if (!(rule.extensions ?? defaultExtensions).includes(ext)) continue;
+    if (rule.exclude?.some((pattern) => new RegExp(pattern).test(path))) continue;
+    if (rule.skip_if_file_matches !== undefined && new RegExp(rule.skip_if_file_matches, "m").test(source)) continue;
     let hits: Hit[];
     if (rule.matcher.type === "regex") {
       hits = regexHits(rule.matcher, lines);
@@ -67,6 +69,25 @@ export function matchRules(rules: readonly Rule[], path: string, source: string,
   return findings;
 }
 
+/**
+ * True for code that is explicitly CommonJS: a .cjs file, or a file whose nearest package.json below
+ * the project root sets "type": "commonjs". The root package.json does not count, so a CommonJS
+ * project as a whole is still scanned.
+ */
+export function isExplicitCommonJs(root: string, path: string): boolean {
+  if (path.endsWith(".cjs")) return true;
+  for (let dir = dirname(path); dir !== "." && dir !== ""; dir = dirname(dir)) {
+    const manifest = join(root, dir, "package.json");
+    if (!existsSync(manifest)) continue;
+    try {
+      return (JSON.parse(readFileSync(manifest, "utf8")) as { type?: string }).type === "commonjs";
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
 /** Runs a pack's rule file over every source file of the project. */
 export function detect(rootDir: string, pack: Pack, rules: readonly Rule[] = loadRules(pack)): FindingsFile {
   const root = resolve(rootDir);
@@ -74,7 +95,10 @@ export function detect(rootDir: string, pack: Pack, rules: readonly Rule[] = loa
   const wanted = new Set([...defaults, ...rules.flatMap((r) => r.extensions ?? [])]);
   const findings = walk(root)
     .filter((path) => wanted.has(extname(path)))
-    .flatMap((path) => matchRules(rules, path, readFileSync(join(root, path), "utf8"), defaults));
+    .flatMap((path) => {
+      const applicable = rules.some((r) => r.skip_explicit_commonjs === true) && isExplicitCommonJs(root, path) ? rules.filter((r) => r.skip_explicit_commonjs !== true) : rules;
+      return matchRules(applicable, path, readFileSync(join(root, path), "utf8"), defaults);
+    });
   findings.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.column - b.column || a.rule.localeCompare(b.rule));
   return { pack: pack.id, findings };
 }

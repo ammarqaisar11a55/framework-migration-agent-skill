@@ -7,6 +7,9 @@
 //   const { a } = require("./x")    → import { a } from "./x"
 //   module.exports = { a, b }       → export { a, b }
 //   exports.a = ...                 → export const a = ...
+//   const x = require("pkg")        → import x from "pkg"          (pkg's types declare a default export)
+//                                   → import * as x from "pkg"     (pkg's types declare only named exports)
+//                                   → import x = require("pkg")    (types declare `export =`, or no types)
 //   module.exports = value          → export default value         (only when every importer is
 //                                                                    rewritten in the same pass)
 //                                   → export = value               (otherwise: same runtime shape)
@@ -14,7 +17,9 @@
 // `export default` compiles to `exports.default`, so it is used only for modules whose every
 // importer is a CommonJS file with a plain top-level require that this codemod rewrites too.
 // A module imported by an ES module, required dynamically, or required lazily keeps its shape.
+import { existsSync, readFileSync } from "node:fs";
 import { builtinModules } from "node:module";
+import { dirname, join } from "node:path";
 import { isJsSource } from "./shared.js";
 
 export const parser = "babel";
@@ -23,6 +28,85 @@ export const include = (path) => isJsSource(path) && !path.endsWith(".mjs");
 const BUILTINS = new Set([...builtinModules, ...builtinModules.map((name) => `node:${name}`)]);
 /** Packages verified to be plain `module.exports = value` CommonJS, so a default import is exact. */
 const DEFAULT_IMPORT_SAFE = new Set(["express"]);
+
+/** The declaration file TypeScript uses for `require(name)`, looking up node_modules like Node does. */
+function declarationFile(root, name) {
+  for (let dir = root; ; dir = dirname(dir)) {
+    const found = declarationFileIn(join(dir, "node_modules"), name);
+    if (found !== undefined) return found;
+    if (dirname(dir) === dir) return undefined;
+  }
+}
+
+function declarationFileIn(nodeModules, name) {
+  if (!existsSync(nodeModules)) return undefined;
+  const dir = join(nodeModules, name);
+  const pkgPath = join(dir, "package.json");
+  if (existsSync(pkgPath)) {
+    let pkg;
+    try {
+      pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
+    } catch {
+      pkg = {};
+    }
+    const candidates = [];
+    // exports: { ".": { require: { types } } }, { ".": { types } }, { require: "./x.cjs" } ...
+    let entry = pkg.exports;
+    if (entry !== null && typeof entry === "object" && !Array.isArray(entry) && "." in entry) entry = entry["."];
+    if (entry !== null && typeof entry === "object" && !Array.isArray(entry)) {
+      const conditional = entry.require ?? entry.node ?? entry.default;
+      if (typeof conditional === "object" && conditional !== null && typeof conditional.types === "string") candidates.push(conditional.types);
+      if (typeof entry.types === "string") candidates.push(entry.types);
+      for (const file of [entry.require, entry.default].filter((f) => typeof f === "string")) candidates.push(file.replace(/\.c?js$/, (ext) => (ext === ".cjs" ? ".d.cts" : ".d.ts")));
+    } else if (typeof entry === "string") {
+      candidates.push(entry.replace(/\.c?js$/, (ext) => (ext === ".cjs" ? ".d.cts" : ".d.ts")));
+    }
+    for (const field of [pkg.types, pkg.typings]) if (typeof field === "string") candidates.push(field);
+    if (typeof pkg.main === "string") candidates.push(pkg.main.replace(/\.c?js$/, (ext) => (ext === ".cjs" ? ".d.cts" : ".d.ts")).replace(/^(?!.*\.d\.c?ts$)(.*)$/, "$1.d.ts"));
+    candidates.push("index.d.ts");
+    for (const candidate of candidates) {
+      const path = join(dir, candidate);
+      if (/\.d\.c?ts$/.test(path) && existsSync(path)) return path;
+    }
+  }
+  // DefinitelyTyped: @scope/name → @types/scope__name.
+  const typesName = name.startsWith("@") ? name.slice(1).replace("/", "__") : name;
+  const typesDir = join(nodeModules, "@types", typesName);
+  if (!existsSync(typesDir)) return undefined;
+  let types = "index.d.ts";
+  try {
+    const pkg = JSON.parse(readFileSync(join(typesDir, "package.json"), "utf8"));
+    types = pkg.types ?? pkg.typings ?? types;
+  } catch {
+    // no package.json: index.d.ts
+  }
+  const path = join(typesDir, types.endsWith(".ts") ? types : `${types}.d.ts`);
+  return existsSync(path) ? path : existsSync(join(typesDir, "index.d.ts")) ? join(typesDir, "index.d.ts") : undefined;
+}
+
+/**
+ * The import style for a package, from its own type declarations: they describe what
+ * `require(name)` returns, so following them keeps both the runtime value and the types right.
+ * Untyped packages keep `import = require()`, which preserves the runtime value exactly.
+ */
+function packageStyle(specifier, options, cache) {
+  if (BUILTINS.has(specifier) || DEFAULT_IMPORT_SAFE.has(specifier)) return "default";
+  const parts = specifier.split("/");
+  const name = specifier.startsWith("@") ? parts.slice(0, 2).join("/") : parts[0];
+  // Subpath imports have their own entry points; keep their exact shape.
+  if (name !== specifier || options.root === undefined) return "assign";
+  if (cache.has(name)) return cache.get(name);
+  let style = "assign";
+  const file = declarationFile(options.root, name);
+  if (file !== undefined) {
+    const text = readFileSync(file, "utf8");
+    if (/^\s*export\s*=/m.test(text)) style = "assign";
+    else if (/^\s*export\s+default\b|\bas\s+default\b/m.test(text)) style = "default";
+    else if (/^\s*export\s/m.test(text)) style = "named";
+  }
+  cache.set(name, style);
+  return style;
+}
 
 const isId = (node, name) => node?.type === "Identifier" && (name === undefined || node.name === name);
 const isModuleExports = (node) => node?.type === "MemberExpression" && !node.computed && isId(node.object, "module") && isId(node.property, "exports");
@@ -191,6 +275,7 @@ export default function transform(file, api, options) {
 
   const imports = options.inventory.files.find((f) => f.path === options.originalPath)?.imports ?? [];
   const replacements = new Map();
+  const packageStyles = new Map();
   const string = (value) => j.stringLiteral(value);
   const importOf = (specifiers, specifier) => j.importDeclaration(specifiers, string(specifier));
   const importEquals = (name, specifier) => j.tsImportEqualsDeclaration(j.identifier(name), j.tsExternalModuleReference(string(specifier)));
@@ -212,7 +297,7 @@ export default function transform(file, api, options) {
       options.note(`${file.path}: require("${specifier}") does not resolve to a project file; left unchanged`);
       continue;
     }
-    const style = local ? styleOf(j, target, options) : BUILTINS.has(specifier) || DEFAULT_IMPORT_SAFE.has(specifier) ? "default" : "assign";
+    const style = local ? styleOf(j, target, options) : packageStyle(specifier, options, packageStyles);
 
     if (isId(id)) {
       if (style === "default") replacements.set(statement, importOf([j.importDefaultSpecifier(j.identifier(id.name))], specifier));
@@ -252,5 +337,19 @@ export default function transform(file, api, options) {
     return replacement;
   });
   const single = (file.source.match(/require\('/g) ?? []).length >= (file.source.match(/require\("/g) ?? []).length;
-  return root.toSource({ quote: single ? "single" : "double" });
+  const output = root.toSource({ quote: single ? "single" : "double" });
+  return terminateExportAssignments(output, j);
+}
+
+/** recast prints `export = value` without the semicolon its other statements get; add it back. */
+function terminateExportAssignments(source, j) {
+  const ends = [];
+  j.withParser("ts")(source)
+    .find(j.TSExportAssignment)
+    .forEach((path) => {
+      if (source[path.node.end - 1] !== ";") ends.push(path.node.end);
+    });
+  let out = source;
+  for (const end of ends.sort((a, b) => b - a)) out = `${out.slice(0, end)};${out.slice(end)}`;
+  return out;
 }

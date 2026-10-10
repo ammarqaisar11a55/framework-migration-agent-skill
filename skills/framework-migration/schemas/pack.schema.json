@@ -76,8 +76,18 @@
           },
           "version": {
             "type": "string",
-            "pattern": "^v?[0-9]+\\.[0-9]+(\\.[0-9]+)?([+-][0-9A-Za-z.+-]+)?$",
+            "pattern": "^v?[0-9]+\\.[0-9]+(\\.[0-9]+)?([.+-][0-9A-Za-z.+-]+)?$",
             "description": "Exact version. Ranges (^, ~, x, >=) and placeholders are rejected."
+          },
+          "source": {
+            "type": "string",
+            "pattern": "^https://",
+            "description": "Repository the tool is fetched from, for tools run from source rather than installed from a registry."
+          },
+          "ref": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{40}$",
+            "description": "Full commit SHA of `source` the pack was verified with."
           },
           "role": {
             "enum": [
@@ -119,7 +129,7 @@
             "items": {
               "$ref": "#/definitions/command"
             },
-            "description": "Run before the stage's codemods: the official migration tool goes here."
+            "description": "Run before the stage's codemods: the official migration tool goes here. `{pack_dir}` is replaced with the pack's directory."
           },
           "fix_rules": {
             "type": "boolean",
@@ -206,6 +216,10 @@
           "type": "string",
           "minLength": 1,
           "description": "semver range, e.g. \"4.x\"."
+        },
+        "module_type": {
+          "enum": ["commonjs", "module"],
+          "description": "Node packs only: the package's module format (package.json \"type\") must match."
         }
       }
     },

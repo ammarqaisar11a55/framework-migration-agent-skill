@@ -1,0 +1,148 @@
+# Pydantic v1 APIs that v2 renames, removes or deprecates. Source: the Pydantic v2 migration guide and
+# bump-pydantic's rules (references/official-sources.md).
+
+exclude: ['(^|/)(\.venv|venv|site-packages)/']
+
+rules:
+  - id: config-class
+    description: "class Config inside a model; v2 uses model_config = ConfigDict(...) with renamed keys."
+    matcher:
+      type: regex
+      pattern: '^\s+class Config\s*:'
+    extensions: [".py"]
+    severity: warn
+    auto_fixable: true
+    fix_hint: "Converted to model_config = ConfigDict(...) (SettingsConfigDict for settings) by bump-pydantic (BP002), with keys renamed (orm_mode → from_attributes, ...); allow_mutation = False becomes frozen=True (finish-bump.js)."
+    docs_url: https://docs.pydantic.dev/latest/migration/#changes-to-config
+
+  - id: validator
+    description: "@validator, deprecated in v2 for @field_validator."
+    matcher:
+      type: regex
+      pattern: '^\s*@validator\((?![^)]*\b(each_item|always)\s*=)'
+    extensions: [".py"]
+    severity: warn
+    auto_fixable: true
+    fix_hint: "Converted to @field_validator(...) + @classmethod by bump-pydantic (BP007); pre=True becomes mode=\"before\". Validators that take a `values` argument stay @validator with a TODO."
+    docs_url: https://docs.pydantic.dev/latest/migration/#changes-to-validators
+
+  - id: validator-unconvertible
+    description: "@validator(each_item=True) or @validator(always=True): no direct @field_validator equivalent."
+    matcher:
+      type: regex
+      pattern: '^\s*@validator\([^)]*\b(each_item|always)\s*='
+    extensions: [".py"]
+    severity: warn
+    auto_fixable: false
+    fix_hint: "bump-pydantic leaves these as @validator with a TODO; they still work in v2 (deprecated). Port by hand: each_item → validate the item type (Annotated[str, AfterValidator(...)]); always=True → validate_default=True on the Field; values → info.data."
+    docs_url: https://docs.pydantic.dev/latest/migration/#changes-to-validators
+
+  - id: root-validator
+    description: "A bare @root_validator; v2 rejects it without skip_on_failure=True (or pre=True) and deprecates it for @model_validator."
+    matcher:
+      type: regex
+      pattern: '^\s*@root_validator\s*(\(\s*\))?\s*$'
+    extensions: [".py"]
+    severity: error
+    auto_fixable: true
+    fix_hint: "A bare @root_validator becomes @root_validator(skip_on_failure=True) (finish-bump.js), which v2 accepts; it no longer runs after a field fails. Moving to @model_validator(mode=\"after\") is a follow-up."
+    docs_url: https://docs.pydantic.dev/latest/migration/#changes-to-validators
+
+  - id: field-renamed-arguments
+    description: "Field(regex=...), Field(min_items/max_items=...): renamed in v2 (pattern, min_length/max_length)."
+    matcher:
+      type: regex
+      pattern: '\bField\([^)]*\b(regex|min_items|max_items)\s*='
+    extensions: [".py"]
+    severity: error
+    auto_fixable: true
+    fix_hint: "Renamed by bump-pydantic (BP003)."
+    docs_url: https://docs.pydantic.dev/latest/migration/#changes-to-pydanticfield
+
+  - id: optional-without-default
+    description: "An Optional[...] field without a default. In v1 it defaulted to None; in v2 it is required."
+    matcher:
+      type: regex
+      pattern: '^\s+\w+\s*:\s*Optional\[[^=]*\]\s*$'
+    extensions: [".py"]
+    severity: error
+    auto_fixable: true
+    fix_hint: "bump-pydantic adds `= None` (BP001), keeping v1 behaviour."
+    docs_url: https://docs.pydantic.dev/latest/migration/#required-optional-and-nullable-fields
+
+  - id: base-settings
+    description: "BaseSettings imported from pydantic; v2 moves it to the pydantic-settings package."
+    matcher:
+      type: regex
+      pattern: 'from\s+pydantic\s+import\s+[^\n]*\bBaseSettings\b'
+    extensions: [".py"]
+    severity: error
+    auto_fixable: true
+    fix_hint: "Imported from pydantic_settings by bump-pydantic; finish-bump.js adds pydantic-settings to requirements.txt."
+    docs_url: https://docs.pydantic.dev/latest/migration/#basesettings-has-moved-to-pydantic-settings
+
+  - id: generic-model
+    description: "pydantic.generics.GenericModel, removed in v2 (BaseModel with Generic[T])."
+    matcher:
+      type: regex
+      pattern: '\bGenericModel\b'
+    extensions: [".py"]
+    severity: error
+    auto_fixable: true
+    fix_hint: "Replaced with BaseModel by bump-pydantic (BP005)."
+    docs_url: https://docs.pydantic.dev/latest/migration/#generic-models
+
+  - id: config-extra-enum
+    description: "Extra.forbid / Extra.allow / Extra.ignore; v2 takes the strings."
+    matcher:
+      type: regex
+      pattern: '\bExtra\.(forbid|allow|ignore)\b'
+    extensions: [".py"]
+    severity: info
+    auto_fixable: true
+    fix_hint: "Converted to extra=\"forbid\" (etc.) in ConfigDict by bump-pydantic."
+    docs_url: https://docs.pydantic.dev/latest/migration/#changes-to-config
+
+  - id: custom-root
+    description: "__root__ fields (custom root types), removed in v2: RootModel instead."
+    matcher:
+      type: regex
+      pattern: '^\s+__root__\s*:'
+    extensions: [".py"]
+    severity: error
+    auto_fixable: false
+    fix_hint: "Subclass RootModel[...] and use .root instead of .__root__; parse_obj / dict() callers change accordingly."
+    docs_url: https://docs.pydantic.dev/latest/migration/#rootmodel-and-custom-root-types
+
+  - id: deprecated-model-class-methods
+    description: "parse_obj / parse_raw / parse_file / from_orm / construct / schema / update_forward_refs: deprecated in v2 (model_validate, model_validate_json, model_construct, model_json_schema, model_rebuild)."
+    matcher:
+      type: regex
+      pattern: '\b[A-Z]\w*\.(parse_obj|parse_raw|parse_file|from_orm|construct|schema|schema_json|update_forward_refs)\('
+    extensions: [".py"]
+    severity: info
+    auto_fixable: false
+    fix_hint: "They still work in v2 with a PydanticDeprecatedSince20 warning. Rename when convenient: parse_obj/from_orm → model_validate (from_attributes=True), parse_raw → model_validate_json, construct → model_construct, schema → model_json_schema, update_forward_refs → model_rebuild."
+    docs_url: https://docs.pydantic.dev/latest/migration/#changes-to-pydanticbasemodel
+
+  - id: deprecated-model-instance-methods
+    description: ".dict(...) / .json(...) / .copy(update=...) on models: deprecated in v2 (model_dump, model_dump_json, model_copy)."
+    matcher:
+      type: regex
+      pattern: '\.(dict|json)\(\s*(exclude|include|by_alias|exclude_none|exclude_unset|exclude_defaults)\b|\.copy\(\s*update\s*='
+    extensions: [".py"]
+    severity: info
+    auto_fixable: false
+    fix_hint: "They still work in v2 with a warning, but .json() now returns compact JSON (no spaces after separators): compare parsed values, not strings. Rename to model_dump / model_dump_json / model_copy."
+    docs_url: https://docs.pydantic.dev/latest/migration/#changes-to-pydanticbasemodel
+
+  - id: json-encoders
+    description: "Config.json_encoders, deprecated in v2."
+    matcher:
+      type: regex
+      pattern: '^\s+json_encoders\s*='
+    extensions: [".py"]
+    severity: warn
+    auto_fixable: false
+    fix_hint: "Use @field_serializer or Annotated[..., PlainSerializer(...)] on the fields instead."
+    docs_url: https://docs.pydantic.dev/latest/migration/#changes-to-json-schema-generation

@@ -14,6 +14,8 @@ import type { Inventory, Pack, PackStage, StageCommand } from "./types.ts";
 /** What a codemod receives as its third argument, in addition to anything jscodeshift defines. */
 export interface CodemodContext {
   pack: Pack;
+  /** Absolute path of the project. Read-only access outside the project files, e.g. node_modules. */
+  root: string;
   inventory: Inventory;
   /** The file's path when the stage started (codemods earlier in the stage may have renamed it). */
   originalPath: string;
@@ -101,7 +103,7 @@ class Overlay {
   /** current path → path at stage start */
   readonly origin = new Map<string, string>();
 
-  constructor(private readonly root: string, readonly paths: Set<string>) {
+  constructor(readonly root: string, readonly paths: Set<string>) {
     for (const path of paths) this.origin.set(path, path);
   }
 
@@ -148,6 +150,7 @@ async function runOne(name: string, mod: CodemodModule, overlay: Overlay, pack: 
   const result: CodemodResult = { codemod: name, changes: [], notes: [], errors: [], patch: "" };
   const base = {
     pack,
+    root: overlay.root,
     inventory,
     read: (path: string) => overlay.read(path),
     note: (message: string) => {
@@ -210,6 +213,9 @@ async function runOne(name: string, mod: CodemodModule, overlay: Overlay, pack: 
 const commandText = (command: StageCommand, dryRun: boolean): string | undefined =>
   typeof command === "string" ? (dryRun ? undefined : command) : dryRun ? command.dry_run : command.run;
 
+/** `{pack_dir}` in a stage command is the pack's absolute directory, quoted for the shell. */
+export const expandCommand = (text: string, pack: Pack): string => text.replaceAll("{pack_dir}", `'${pack.dir.replaceAll("'", "'\\''")}'`);
+
 export interface RunStageOptions {
   apply?: boolean;
   /** Do not run the stage's commands / post_commands (the caller handles them). */
@@ -242,8 +248,9 @@ export async function runStage(rootDir: string, pack: Pack, stageId: string, opt
 
   const runCommands = (commands: readonly StageCommand[], phase: "before" | "after"): boolean => {
     for (const [index, command] of commands.entries()) {
-      const text = commandText(command, !apply);
-      const label = typeof command === "string" ? command : command.run;
+      const raw = commandText(command, !apply);
+      const text = raw === undefined ? undefined : expandCommand(raw, pack);
+      const label = expandCommand(typeof command === "string" ? command : command.run, pack);
       if (text === undefined || options.skipCommands === true) {
         result.commands.push({ command: label, phase, status: "skipped", output: "" });
         continue;

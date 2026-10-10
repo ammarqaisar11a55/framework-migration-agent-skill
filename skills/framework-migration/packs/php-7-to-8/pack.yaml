@@ -1,0 +1,25 @@
+id: php-7-to-8
+title: PHP 7.x → 8.x
+ecosystem: php
+tier: 1
+status: shipped
+
+from: { framework: php, versions: "7.x" }
+to:   { framework: php, versions: "8.x" }
+
+tools:
+  # Installed with Composer into the cache by codemods/rector.mjs; the project's composer.json is untouched.
+  - { name: rector/rector, version: "2.6.7", role: engine }
+
+stages:
+  - id: php-8
+    title: Run Rector's PHP sets up to 8.0, then require PHP 8 in composer.json
+    commands:
+      - run: "node {pack_dir}/codemods/rector.mjs"
+        dry_run: "node {pack_dir}/codemods/rector.mjs --dry-run"
+    codemods: [require-php8.js]
+    fix_rules: true
+
+checks:
+  typecheck: "find . -path ./vendor -prune -o -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null"
+  test: "phpunit"

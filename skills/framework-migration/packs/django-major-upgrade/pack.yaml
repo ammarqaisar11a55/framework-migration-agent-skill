@@ -1,0 +1,32 @@
+id: django-major-upgrade
+title: Django 4.2 → 5.2 (LTS to LTS)
+ecosystem: python
+tier: 1
+status: shipped
+
+from: { framework: django, versions: "4.2.x" }
+to:   { framework: django, versions: "5.2.x" }
+
+tools:
+  # Run by codemods/django-upgrade.mjs from its own virtualenv in the cache directory.
+  - { name: django-upgrade, version: "1.32.0", role: engine }
+  - { name: Django, version: "5.2.17", role: dependency }
+
+stages:
+  - id: deprecations-4-2
+    title: Fix what Django 4.2 deprecates (django-upgrade --target-version 4.2), still on 4.2
+    commands:
+      - run: "node {pack_dir}/codemods/django-upgrade.mjs 4.2"
+        dry_run: "node {pack_dir}/codemods/django-upgrade.mjs 4.2 --dry-run"
+  - id: django-5-2
+    title: Upgrade to Django 5.2 and apply its rewrites (django-upgrade --target-version 5.2)
+    commands:
+      - run: "node {pack_dir}/codemods/django-upgrade.mjs 5.2"
+        dry_run: "node {pack_dir}/codemods/django-upgrade.mjs 5.2 --dry-run"
+    codemods: [set-django-version.js]
+    fix_rules: true
+    post_commands: ["node {pack_dir}/codemods/install-requirements.mjs"]
+
+checks:
+  typecheck: "python manage.py check"
+  test: "python -Wd manage.py test"

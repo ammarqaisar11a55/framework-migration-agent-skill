@@ -1,0 +1,105 @@
+# JUnit 4 constructs and what happens to them. Source: the JUnit 5 user guide's migration tips and
+# OpenRewrite's JUnit4to5Migration recipe (references/official-sources.md).
+
+exclude: ['(^|/)(target|build)/']
+
+# Test classes with custom rules stay on JUnit 4 (junit5.mjs excludes them from the recipe), so the
+# auto-fixable rules skip them; rule custom-rule reports them instead.
+x-custom-rule: &custom_rule '\bimplements\s+[^{]*\b(TestRule|MethodRule)\b|^\s*(public\s+|protected\s+|private\s+)?(static\s+)?(final\s+)?(?!(MockitoRule|TemporaryFolder|ExpectedException|Timeout|TestName)\b)[A-Z]\w*Rule\s+\w+\s*='
+
+rules:
+  - id: junit4-dependency
+    description: "The junit:junit dependency."
+    matcher:
+      type: regex
+      pattern: '<artifactId>\s*junit\s*</artifactId>'
+    extensions: [".xml"]
+    exclude: ['^(?!(.*/)?pom\.xml$)']
+    # Kept on purpose next to the Vintage engine.
+    skip_if_file_matches: '<artifactId>\s*junit-vintage-engine\s*</artifactId>'
+    severity: info
+    auto_fixable: true
+    fix_hint: "Replaced with org.junit.jupiter:junit-jupiter by the recipe; kept, with junit-vintage-engine, when test classes stay on JUnit 4."
+    docs_url: https://docs.junit.org/current/user-guide/#migrating-from-junit4
+
+  - id: test-expected-timeout
+    description: "@Test(expected = ...) / @Test(timeout = ...), which Jupiter's @Test does not have."
+    matcher:
+      type: regex
+      pattern: '@Test\(\s*(expected|timeout)\s*='
+    extensions: [".java"]
+    skip_if_file_matches: *custom_rule
+    severity: warn
+    auto_fixable: true
+    fix_hint: "Rewritten to assertThrows(...) and @Timeout by the recipe."
+    docs_url: https://docs.junit.org/current/user-guide/#migrating-from-junit4-tips
+
+  - id: lifecycle-annotations
+    description: "@Before / @After / @BeforeClass / @AfterClass / @Ignore, renamed in Jupiter."
+    matcher:
+      type: regex
+      pattern: '^\s*@(Before|After|BeforeClass|AfterClass|Ignore)\b'
+    extensions: [".java"]
+    skip_if_file_matches: *custom_rule
+    severity: info
+    auto_fixable: true
+    fix_hint: "Renamed to @BeforeEach / @AfterEach / @BeforeAll / @AfterAll / @Disabled by the recipe."
+    docs_url: https://docs.junit.org/current/user-guide/#migrating-from-junit4-tips
+
+  - id: assertions-with-message
+    description: "org.junit.Assert / Assume, whose optional message is the first argument (Jupiter's is the last)."
+    matcher:
+      type: regex
+      pattern: '^import static org\.junit\.(Assert|Assume)\.'
+    extensions: [".java"]
+    skip_if_file_matches: *custom_rule
+    severity: info
+    auto_fixable: true
+    fix_hint: "Moved to Assertions / Assumptions with the message argument moved last by the recipe."
+    docs_url: https://docs.junit.org/current/user-guide/#migrating-from-junit4-tips
+
+  - id: supported-rules
+    description: "TemporaryFolder / ExpectedException / Timeout / TestName rules; Jupiter has no rules."
+    matcher:
+      type: regex
+      pattern: '^\s*(public\s+|protected\s+|private\s+)?(static\s+)?(final\s+)?(TemporaryFolder|ExpectedException|Timeout|TestName)\s+\w+\s*='
+    extensions: [".java"]
+    skip_if_file_matches: *custom_rule
+    severity: warn
+    auto_fixable: true
+    fix_hint: "Converted by the recipe: @TempDir, assertThrows, @Timeout, TestInfo."
+    docs_url: https://docs.junit.org/current/user-guide/#migrating-from-junit4-rule-support
+
+  - id: runner
+    description: "@RunWith with Parameterized, MockitoJUnitRunner or SpringRunner: runners become extensions or @ParameterizedTest."
+    matcher:
+      type: regex
+      pattern: '@RunWith\(\s*(Parameterized|MockitoJUnitRunner(\.\w+)?|SpringRunner|SpringJUnit4ClassRunner)\.class'
+    extensions: [".java"]
+    skip_if_file_matches: *custom_rule
+    severity: warn
+    auto_fixable: true
+    fix_hint: "Converted by the recipe: @ParameterizedTest with @MethodSource, @ExtendWith(MockitoExtension.class), @ExtendWith(SpringExtension.class)."
+    docs_url: https://docs.junit.org/current/user-guide/#migrating-from-junit4-tips
+
+  - id: other-runner
+    description: "@RunWith with another runner (Theories, Enclosed, Categories, a custom runner)."
+    matcher:
+      type: regex
+      pattern: '@RunWith\(\s*(?!(Parameterized|MockitoJUnitRunner(\.\w+)?|SpringRunner|SpringJUnit4ClassRunner)\.class)'
+    extensions: [".java"]
+    severity: warn
+    auto_fixable: false
+    fix_hint: "Check what the recipe made of it (Enclosed → @Nested is converted; others are not). Port to a Jupiter extension, or keep the class on JUnit 4 with junit-vintage-engine."
+    docs_url: https://docs.junit.org/current/user-guide/#migrating-from-junit4
+
+  - id: custom-rule
+    description: "A custom JUnit 4 rule (a TestRule / MethodRule implementation, or a field of such a type). Jupiter ignores @Rule."
+    matcher:
+      type: regex
+      pattern: *custom_rule
+    extensions: [".java"]
+    severity: warn
+    auto_fixable: false
+    fix_hint: "Classes with custom rules are left on JUnit 4 and run on JUnit Vintage (the stage adds junit-vintage-engine). To move them, rewrite the rule as a Jupiter extension (BeforeEachCallback / AfterEachCallback) and use @ExtendWith or @RegisterExtension."
+    docs_url: https://docs.junit.org/current/user-guide/#extensions

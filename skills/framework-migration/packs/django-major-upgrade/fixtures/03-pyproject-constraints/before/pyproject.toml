@@ -1,0 +1,7 @@
+[project]
+name = "events-site"
+version = "1.0.0"
+requires-python = ">=3.10"
+dependencies = [
+    "Django>=4.2,<5.0",
+]

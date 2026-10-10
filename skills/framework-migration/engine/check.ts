@@ -52,9 +52,27 @@ export function parseTestCounts(output: string): TestCounts | undefined {
   if (vitest?.[1] !== undefined) return { passed: int(/(\d+) passed/.exec(vitest[1])?.[1]), failed: int(/(\d+) failed/.exec(vitest[1])?.[1]) };
   const mocha = last(text.matchAll(/^\s*(\d+) passing\b/gm));
   if (mocha !== undefined) return { passed: int(mocha[1]), failed: int(last(text.matchAll(/^\s*(\d+) failing\b/gm))?.[1]) };
-  const pytest = last(text.matchAll(/^=+ (.*(?:passed|failed|error).*) in [\d.]+s.*=+\s*$/gm));
+  // pytest's summary line, with "=" borders or (with -q) without: "2 failed, 8 passed, 1 error in 0.52s".
+  const pytest = last(text.matchAll(/^(?:=+ )?(\d+ (?:passed|failed|errors?|skipped|warnings?|deselected|xfailed|xpassed)\b.*) in [\d.]+s\b.*$/gm));
   if (pytest?.[1] !== undefined) {
     return { passed: int(/(\d+) passed/.exec(pytest[1])?.[1]), failed: int(/(\d+) failed/.exec(pytest[1])?.[1]) + int(/(\d+) errors?/.exec(pytest[1])?.[1]) };
+  }
+  // unittest (Django's test runner): "Ran 6 tests in 0.01s" then "OK" or "FAILED (failures=1, errors=2, skipped=1)".
+  const unittest = last(text.matchAll(/^Ran (\d+) tests? in [\d.]+s\s*\n+\s*(OK|FAILED)\b([^\n]*)$/gm));
+  if (unittest !== undefined) {
+    const detail = unittest[3] ?? "";
+    const failed = int(/failures=(\d+)/.exec(detail)?.[1]) + int(/errors=(\d+)/.exec(detail)?.[1]);
+    return { passed: int(unittest[1]) - failed - int(/skipped=(\d+)/.exec(detail)?.[1]) - int(/expected failures=(\d+)/.exec(detail)?.[1]), failed };
+  }
+  // PHPUnit: "OK (5 tests, 9 assertions)" or "Tests: 5, Assertions: 9, Failures: 1, Errors: 1, Skipped: 1."
+  const phpunitOk = last(text.matchAll(/^OK \((\d+) tests?, \d+ assertions?\)/gm));
+  if (phpunitOk !== undefined) return { passed: int(phpunitOk[1]), failed: 0 };
+  const phpunit = last(text.matchAll(/^Tests: (\d+), Assertions: \d+(.*)$/gm));
+  if (phpunit !== undefined) {
+    const detail = phpunit[2] ?? "";
+    const failed = int(/Failures: (\d+)/.exec(detail)?.[1]) + int(/Errors: (\d+)/.exec(detail)?.[1]);
+    const notRun = int(/Skipped: (\d+)/.exec(detail)?.[1]) + int(/Incomplete: (\d+)/.exec(detail)?.[1]);
+    return { passed: int(phpunit[1]) - failed - notRun, failed };
   }
   const surefire = last(text.matchAll(/Tests run: (\d+), Failures: (\d+), Errors: (\d+)(?:, Skipped: (\d+))?/g));
   if (surefire !== undefined) {

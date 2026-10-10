@@ -1,0 +1,96 @@
+# Tailwind CSS v3 constructs that v4 removes or changes. Source: the v4 upgrade guide
+# (references/official-sources.md). Renamed utilities (shadow-sm → shadow-xs, ring → ring-3, ...) are
+# not rules: v4 reuses several old names for other sizes, so a class name alone cannot say which
+# version it was written for. The upgrade tool renames them; the stage diff shows each one.
+
+rules:
+  - id: tailwind-directives
+    description: "@tailwind base/components/utilities, removed in v4 (one @import \"tailwindcss\" instead)."
+    matcher:
+      type: regex
+      pattern: '^\s*@tailwind\s+(base|components|utilities)\b'
+    extensions: [".css", ".pcss", ".scss"]
+    severity: error
+    auto_fixable: true
+    fix_hint: "Replaced with @import \"tailwindcss\" by @tailwindcss/upgrade."
+    docs_url: https://tailwindcss.com/docs/upgrade-guide
+
+  - id: postcss-plugin
+    description: The tailwindcss PostCSS plugin; v4 ships it as @tailwindcss/postcss.
+    matcher:
+      type: regex
+      pattern: '^\s*["'']?tailwindcss["'']?\s*:|require\(["'']tailwindcss["'']\)'
+    extensions: [".js", ".cjs", ".mjs", ".json"]
+    exclude: ['^(?!(.*/)?(postcss\.config\.[cm]?js|\.postcssrc(\.json|\.js)?)$)']
+    severity: error
+    auto_fixable: true
+    fix_hint: "Replaced with @tailwindcss/postcss (and autoprefixer / postcss-import removed, which v4 does itself) by @tailwindcss/upgrade."
+    docs_url: https://tailwindcss.com/docs/upgrade-guide
+
+  - id: opacity-utilities
+    description: bg-/text-/border-/divide-/ring-/placeholder-opacity-*, removed in v4.
+    matcher:
+      type: regex
+      pattern: '(?<![\w-])((?:[\w-]+:)*(bg|text|border|divide|ring|placeholder)-opacity-\d+)(?![\w-])'
+    extensions: [".html", ".htm", ".jsx", ".tsx", ".vue", ".svelte", ".astro", ".php"]
+    severity: error
+    auto_fixable: true
+    fix_hint: "Merged into the colour utility of the same kind and variant by finish-upgrade.js (bg-brand bg-opacity-50 → bg-brand/50). Without exactly one such colour class, add the /NN modifier to the right colour by hand."
+    docs_url: https://tailwindcss.com/docs/upgrade-guide
+
+  - id: theme-function
+    description: The theme() function in CSS; v4 prefers CSS variables (var(--color-...), --spacing()).
+    matcher:
+      type: regex
+      pattern: '\btheme\(\s*[\w.-]+'
+    extensions: [".css", ".pcss", ".scss"]
+    severity: warn
+    auto_fixable: true
+    fix_hint: "Rewritten by @tailwindcss/upgrade to CSS variables or --spacing(); theme() still works in v4 where it remains."
+    docs_url: https://tailwindcss.com/docs/upgrade-guide
+
+  - id: layer-custom-utilities
+    description: Custom classes in @layer utilities; v4 registers custom utilities with @utility.
+    matcher:
+      type: regex
+      pattern: '^\s*@layer\s+utilities\b'
+    extensions: [".css", ".pcss", ".scss"]
+    severity: warn
+    auto_fixable: true
+    fix_hint: "Converted to @utility by @tailwindcss/upgrade, so the classes keep working with variants."
+    docs_url: https://tailwindcss.com/docs/upgrade-guide
+
+  - id: js-config
+    description: A JavaScript Tailwind configuration. v4 is configured in CSS; the upgrade tool moves what it can and loads the rest with @config.
+    matcher:
+      type: regex
+      pattern: '^\s*(module\.exports|export default)\b'
+    extensions: [".js", ".cjs", ".mjs", ".ts"]
+    exclude: ['^(?!(.*/)?tailwind\.config\.[cm]?[jt]s$)']
+    severity: info
+    auto_fixable: false
+    fix_hint: "Static configuration is moved to CSS (@theme) and the file removed. A configuration with plugins or functions stays and is loaded with @config; move it to CSS by hand when convenient."
+    docs_url: https://tailwindcss.com/docs/upgrade-guide
+
+  - id: config-options-removed
+    description: corePlugins, safelist or separator in a JavaScript configuration — not supported by v4.
+    matcher:
+      type: regex
+      pattern: '^\s*(corePlugins|safelist|separator)\s*:'
+    extensions: [".js", ".cjs", ".mjs", ".ts"]
+    exclude: ['^(?!(.*/)?tailwind\.config\.[cm]?[jt]s$)']
+    severity: error
+    auto_fixable: false
+    fix_hint: "corePlugins and separator have no v4 equivalent; replace safelist with @source inline(...) in CSS."
+    docs_url: https://tailwindcss.com/docs/upgrade-guide
+
+  - id: space-divide-selector
+    description: space-x/y-* or divide-x/y-*, whose selector changed in v4 (it now targets :not(:last-child)).
+    matcher:
+      type: regex
+      pattern: '(?<![\w-])(?:[\w-]+:)*(space|divide)-(x|y)(-\d+|-px|-reverse)?(?![\w-])'
+    extensions: [".html", ".htm", ".jsx", ".tsx", ".vue", ".svelte", ".astro", ".php"]
+    severity: info
+    auto_fixable: false
+    fix_hint: "Usually looks the same. Inline children or children with their own margins can differ; the guide suggests flex/grid with gap instead."
+    docs_url: https://tailwindcss.com/docs/upgrade-guide

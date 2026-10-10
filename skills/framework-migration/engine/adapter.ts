@@ -34,6 +34,13 @@ export interface Adapter {
   resolve?(importer: string, specifier: string, files: ReadonlySet<string>): string | undefined;
   /** Entry points declared by manifests. */
   entryPoints?(project: ProjectView): string[];
+  /**
+   * Evals: the shell command that installs a fixture's dependencies in its directory with the
+   * ecosystem's own tooling (Node fixtures use npm and need none).
+   */
+  install?: string;
+  /** Project-relative directories whose executables checks and stage commands need first on PATH (a virtualenv's bin). */
+  binDirs?: readonly string[];
 }
 
 /** Root-level manifest lookup helper shared by adapters. */

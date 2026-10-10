@@ -1,0 +1,16 @@
+{
+  "name": "fixture-yaml-gitignore-env",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "lint": "eslint .",
+    "test": "node --test test/*.test.js"
+  },
+  "devDependencies": {
+    "@eslint/compat": "2.1.1",
+    "@eslint/eslintrc": "3.3.7",
+    "@eslint/js": "9.39.5",
+    "eslint": "9.39.5",
+    "globals": "17.13.0"
+  }
+}

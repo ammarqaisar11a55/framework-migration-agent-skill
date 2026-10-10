@@ -1,0 +1,13 @@
+{
+  "name": "fixture-unconvertible",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/boot.cjs",
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "type": "module"
+}

@@ -148,6 +148,11 @@ describe("runStage", () => {
     expect(read("post.txt")).toBe("post\n");
   });
 
+  it("replaces {pack_dir} in commands with the quoted pack directory", async () => {
+    const result = await runStage(root, pack({ commands: ["echo {pack_dir}/tool.mjs"] }), "main", { apply: true });
+    expect(result.commands).toMatchObject([{ command: "echo '/nowhere'/tool.mjs", status: "ok", output: "/nowhere/tool.mjs\n" }]);
+  });
+
   it("stops the stage when an official-tool command fails", async () => {
     const result = await runStage(root, pack({ commands: ["exit 3"], codemods: ["var-to-const.js"] }), "main", { apply: true, modules: { "var-to-const.js": varToConst } });
     expect(result.ok).toBe(false);

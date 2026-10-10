@@ -1,7 +1,7 @@
 // Runs every shipped pack's fixtures through the real pipeline and writes evals/scorecard.md.
 //
 //   npm run evals                    all packs
-//   npm run evals -- <pack-id>       one pack
+//   npm run evals -- <pack-id>       one pack, whatever its status (prints the scorecard only)
 //   npm run evals -- --keep          keep the work directory for inspection
 //
 // For each fixture: copy before/ to a work directory, record the baseline, run detection, apply
@@ -11,6 +11,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } fr
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { adapterFor } from "../skills/framework-migration/engine/adapters.ts";
 import { runChecks, type StageCheck } from "../skills/framework-migration/engine/check.ts";
 import { detect } from "../skills/framework-migration/engine/detect.ts";
 import { exec } from "../skills/framework-migration/engine/exec.ts";
@@ -45,22 +46,51 @@ interface PackScore {
 
 const key = (f: { rule: string; file: string; line: number }): string => `${f.rule} ${f.file}:${f.line}`;
 
-const IGNORED = new Set(["node_modules", ".git", ".fm", "dist"]);
-const tree = (root: string): Map<string, string> => new Map(walk(root, IGNORED).map((path) => [path, readFileSync(join(root, path), "utf8")]));
+// Build output (.next, dist, ...) is what the checks produce, not what the migration wrote; lock
+// files are what the install resolved.
+const IGNORED_FILES = new Set(["package-lock.json", "composer.lock"]);
+const tree = (root: string): Map<string, string> =>
+  new Map(
+    walk(root)
+      .filter((path) => !IGNORED_FILES.has(path.split("/").pop() ?? ""))
+      .map((path) => [path, readFileSync(join(root, path), "utf8")]),
+  );
+
+type Manifest = { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
+
+/** Every dependency the fixtures declare, before and after, with each version that occurs. */
+function declaredVersions(fixtures: Fixture[]): Map<string, Set<string>> {
+  const versions = new Map<string, Set<string>>();
+  for (const fixture of fixtures) {
+    for (const state of ["before", "after"]) {
+      const path = join(fixture.dir, state, "package.json");
+      if (!existsSync(path)) continue;
+      const pkg = JSON.parse(readFileSync(path, "utf8")) as Manifest;
+      for (const [name, version] of Object.entries({ ...pkg.dependencies, ...pkg.devDependencies })) {
+        versions.set(name, (versions.get(name) ?? new Set()).add(version));
+      }
+    }
+  }
+  return versions;
+}
+
+/**
+ * A pack whose stages run official tools, or that changes a dependency's version (express 4 → 5),
+ * cannot share one install: each fixture then gets its own, and the stages' commands (official
+ * tools, `npm install`) run for real.
+ */
+const needsIsolation = (pack: Pack, fixtures: Fixture[]): boolean =>
+  // Other ecosystems install each fixture with their own tooling (adapter.install).
+  pack.ecosystem !== "node" ||
+  pack.stages.some((stage) => (stage.commands ?? []).length > 0) ||
+  [...declaredVersions(fixtures).values()].some((v) => v.size > 1);
 
 /** Dependencies of every fixture plus the pack's tools, installed once and shared via Node's upward lookup. */
 function installDependencies(pack: Pack, fixtures: Fixture[], workRoot: string): string {
   const dependencies: Record<string, string> = {};
   // The tooling stage adds these to the project; here they come from the shared install instead.
   for (const tool of pack.tools) if (tool.role === "dependency" || tool.role === "devDependency") dependencies[tool.name] = tool.version;
-  for (const fixture of fixtures) {
-    for (const state of ["before", "after"]) {
-      const path = join(fixture.dir, state, "package.json");
-      if (!existsSync(path)) continue;
-      const pkg = JSON.parse(readFileSync(path, "utf8")) as { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
-      Object.assign(dependencies, pkg.dependencies, pkg.devDependencies);
-    }
-  }
+  for (const [name, versions] of declaredVersions(fixtures)) dependencies[name] = [...versions][0] as string;
   const manifest = JSON.stringify({ name: `fm-evals-${pack.id}`, private: true, dependencies }, null, 2);
   const dir = join(workRoot, `${pack.id}-${createHash("sha256").update(manifest).digest("hex").slice(0, 12)}`);
   if (!existsSync(join(dir, "node_modules", ".installed"))) {
@@ -69,17 +99,32 @@ function installDependencies(pack: Pack, fixtures: Fixture[], workRoot: string):
     console.log(`  installing fixture dependencies in ${dir}`);
     const install = exec(process.env["FM_EVALS_INSTALL"] ?? "npm install --no-audit --no-fund", { cwd: dir });
     if (install.exitCode !== 0) throw new Error(`Installing fixture dependencies failed:\n${install.output}`);
+    // A pack whose fixtures need no packages gets no node_modules from npm.
+    mkdirSync(join(dir, "node_modules"), { recursive: true });
     writeFileSync(join(dir, "node_modules", ".installed"), "");
   }
   return dir;
 }
 
-async function scoreFixture(pack: Pack, fixture: Fixture, depsDir: string): Promise<FixtureScore> {
+async function scoreFixture(pack: Pack, fixture: Fixture, depsDir: string, isolated: boolean): Promise<FixtureScore> {
   const work = join(depsDir, fixture.name);
   rmSync(work, { recursive: true, force: true });
   cpSync(join(fixture.dir, "before"), work, { recursive: true });
-  const env = { ...process.env, PATH: `${join(depsDir, "node_modules", ".bin")}${delimiter}${process.env["PATH"] ?? ""}` };
+  const adapter = adapterFor(pack.ecosystem);
+  // Isolated: no lockfile, so the migrated tree compares against after/ without one. A virtualenv's
+  // bin (adapter.binDirs) comes first on PATH, as if the project's environment were activated.
+  const binDirs = isolated ? (adapter.binDirs ?? []).map((dir) => join(work, dir)) : [join(depsDir, "node_modules", ".bin")];
+  const env = {
+    ...process.env,
+    ...(isolated ? { npm_config_package_lock: "false" } : {}),
+    PATH: [...binDirs, process.env["PATH"] ?? ""].join(delimiter),
+  };
   const problems: string[] = [];
+  if (isolated) {
+    const command = adapter.install ?? process.env["FM_EVALS_INSTALL"] ?? "npm install --no-audit --no-fund";
+    const install = exec(command, { cwd: work, env });
+    if (install.exitCode !== 0) throw new Error(`Installing ${fixture.name} failed:\n${install.output}`);
+  }
   const expectation = fixture.expectation;
 
   const baseline = await runChecks(work, pack, 0, { env, allowDirty: true });
@@ -99,9 +144,10 @@ async function scoreFixture(pack: Pack, fixture: Fixture, depsDir: string): Prom
   let last: StageCheck = baseline;
   for (const stage of pack.stages) {
     if (!last.gate.passed) break;
-    const result = await runStage(work, pack, stage.id, { apply: true, skipCommands: true, env });
+    const result = await runStage(work, pack, stage.id, { apply: true, skipCommands: !isolated, env });
     if (!result.ok) {
-      problems.push(`stage ${stage.id}: ${result.codemods.flatMap((c) => c.errors.map((e) => `${e.path}: ${e.message}`)).join("; ")}`);
+      const failed = result.commands.filter((c) => c.status === "failed").map((c) => `${c.command}:\n${c.output}`);
+      problems.push(`stage ${stage.id}: ${[...failed, ...result.codemods.flatMap((c) => c.errors.map((e) => `${e.path}: ${e.message}`))].join("; ")}`);
       break;
     }
     last = await runChecks(work, pack, result.number, { env });
@@ -113,7 +159,10 @@ async function scoreFixture(pack: Pack, fixture: Fixture, depsDir: string): Prom
   const finished = last.stage === pack.stages.length;
 
   // Criteria 1 and 2: the migrated output type-checks, and the tests match the baseline.
-  const typecheck = last.checks.find((c) => c.name === "typecheck");
+  // JavaScript packs have no type-check; for them "compiles" means the app loads and serves (smoke),
+  // or, without a smoke probe, that the test run loaded the migrated modules (ES module syntax and
+  // missing exports fail when the module graph links, before any test runs).
+  const typecheck = ["typecheck", "smoke", "test"].map((name) => last.checks.find((c) => c.name === name)).find((c) => c !== undefined);
   const before = baseline.checks.find((c) => c.name === "test")?.tests;
   const after = last.checks.find((c) => c.name === "test");
   const compiles = finished && typecheck?.status === "pass";
@@ -138,7 +187,18 @@ async function scoreFixture(pack: Pack, fixture: Fixture, depsDir: string): Prom
   const want = tree(join(fixture.dir, "after"));
   const got = tree(work);
   const differing = [...new Set([...want.keys(), ...got.keys()])].filter((path) => want.get(path) !== got.get(path)).sort();
-  if (differing.length > 0) problems.push(`differs from after/: ${differing.join(", ")}`);
+  if (differing.length > 0) {
+    problems.push(`differs from after/: ${differing.join(", ")}`);
+    // The diff itself, so a failure on CI shows what changed (after/ vs the migrated tree).
+    const diffs = differing.map(
+      (path) =>
+        exec(`git diff --no-index --no-color -- ${JSON.stringify(join(fixture.dir, "after", path))} ${JSON.stringify(join(work, path))}`, {
+          cwd: work,
+        }).output,
+    );
+    const lines = diffs.join("").split("\n");
+    problems.push(`diff after/ → migrated:\n${lines.slice(0, 120).join("\n")}${lines.length > 120 ? `\n... ${lines.length - 120} more lines` : ""}`);
+  }
   if (falsePositives.length > 0) problems.push(`unexpected findings: ${falsePositives.join(", ")}`);
   if (falseNegatives.length > 0) problems.push(`missing findings: ${falseNegatives.join(", ")}`);
 
@@ -166,7 +226,9 @@ export function renderScorecard(scores: PackScore[]): string {
   const out = [
     "# Eval scorecard",
     "",
-    "Generated by `npm run evals`. Criteria are defined in PLAN.md §9.",
+    "Generated by `npm run evals`. Criteria are defined in PLAN.md §9. For packs without a",
+    "`typecheck` check, \"compiles\" means the migrated app boots and answers the smoke probe, or,",
+    "without a smoke probe either, that the test run loaded the migrated modules.",
     "",
     "| Pack | Fixtures | Compile pass % | Test parity % | Finding precision | Finding recall | Manual items |",
     "|---|---|---|---|---|---|---|",
@@ -200,15 +262,19 @@ async function main(): Promise<void> {
   const workRoot = join(tmpdir(), "fm-evals");
   const scores: PackScore[] = [];
   for (const pack of listPacks()) {
-    if (pack.status !== "shipped" || (only !== undefined && pack.id !== only)) continue;
+    // A pack named on the command line runs whatever its status; otherwise only shipped packs do.
+    if (only !== undefined ? pack.id !== only : pack.status !== "shipped") continue;
     console.log(`Pack ${pack.id}`);
     const { errors } = validatePack(pack.dir);
     if (errors.length > 0) throw new Error(`Pack ${pack.id} is invalid:\n  ${errors.join("\n  ")}`);
     const fixtures = loadFixtures(pack);
-    const depsDir = installDependencies(pack, fixtures, workRoot);
+    const isolated = needsIsolation(pack, fixtures);
+    // Isolated work directories must not sit below a shared node_modules.
+    const depsDir = isolated ? join(workRoot, `${pack.id}-isolated`) : installDependencies(pack, fixtures, workRoot);
+    if (isolated) console.log(`  installing each fixture on its own (official tools, changed dependency versions, or a non-Node ecosystem) in ${depsDir}`);
     const results: FixtureScore[] = [];
     for (const fixture of fixtures) {
-      const score = await scoreFixture(pack, fixture, depsDir);
+      const score = await scoreFixture(pack, fixture, depsDir, isolated);
       console.log(`  ${passed(score) ? "pass" : "FAIL"}  ${fixture.name}`);
       for (const problem of score.problems) console.log(`        ${problem.replace(/\n/g, "\n        ")}`);
       results.push(score);
@@ -216,9 +282,14 @@ async function main(): Promise<void> {
     }
     scores.push({ pack, fixtures: results });
   }
-  const scorecard = join(dirname(fileURLToPath(import.meta.url)), "scorecard.md");
-  writeFileSync(scorecard, renderScorecard(scores));
-  console.log(`Wrote ${scorecard}`);
+  // The committed scorecard covers every shipped pack, so a single-pack run only prints its part.
+  if (only === undefined) {
+    const scorecard = join(dirname(fileURLToPath(import.meta.url)), "scorecard.md");
+    writeFileSync(scorecard, renderScorecard(scores));
+    console.log(`Wrote ${scorecard}`);
+  } else {
+    console.log(`\n${renderScorecard(scores)}`);
+  }
   const all = scores.flatMap((s) => s.fixtures);
   if (all.length === 0) throw new Error("No shipped pack with fixtures was found");
   if (!all.every(passed)) process.exitCode = 1;

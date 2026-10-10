@@ -1,0 +1,24 @@
+{
+  "name": "fixture-component-library",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "svelte": "./src/lib/index.js",
+  "exports": {
+    ".": {
+      "svelte": "./src/lib/index.js"
+    }
+  },
+  "scripts": {
+    "check": "svelte-check --workspace src",
+    "test": "node --conditions=browser --import ./test/setup.js --test test/*.test.js"
+  },
+  "peerDependencies": {
+    "svelte": "^4.0.0"
+  },
+  "devDependencies": {
+    "jsdom": "29.1.1",
+    "svelte": "5.57.1",
+    "svelte-check": "4.7.6"
+  }
+}

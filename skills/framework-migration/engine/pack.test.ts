@@ -1,9 +1,10 @@
+import { execFileSync } from "node:child_process";
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { run } from "./cli.ts";
-import { parseExpectation, validatePack } from "./pack.ts";
+import { loadPack, loadRules, parseExpectation, validatePack } from "./pack.ts";
 import { packsDir } from "./paths.ts";
 
 const template = join(packsDir(), "_template");
@@ -53,6 +54,14 @@ describe("validate-pack", () => {
     expect(errors).toContain("/tier: must be one of [1,2,3]");
   });
 
+  it("applies the file-level exclude list to every rule and rejects an invalid pattern", () => {
+    edit("rules/deprecated-apis.yaml", (t) => `exclude: ["\\\\.config\\\\.js$"]\n${t}`);
+    expect(validatePack(dir).errors.filter((e) => e.includes("exclude"))).toEqual([]);
+    for (const rule of loadRules(loadPack(dir))) expect(rule.exclude).toContain("\\.config\\.js$");
+    edit("rules/deprecated-apis.yaml", (t) => t.replace('exclude: ["\\\\.config\\\\.js$"]', 'exclude: ["("]'));
+    expect(validatePack(dir).errors.join("\n")).toContain('exclude pattern "(" is not a valid regex');
+  });
+
   it("rejects an id that differs from the directory name", () => {
     edit("pack.yaml", (t) => t.replace("id: template-pack", "id: other-pack"));
     expect(validatePack(dir).errors.join("\n")).toContain('id "other-pack" must equal the directory name');
@@ -96,5 +105,16 @@ describe("parseExpectation", () => {
 
   it("rejects a report without frontmatter", () => {
     expect(() => parseExpectation("# just prose\n")).toThrow("no YAML frontmatter");
+  });
+});
+
+describe("fixtures in git", () => {
+  // A fixture's own .gitignore (one that tests ignore handling) also applies to this repository, so
+  // files it lists are silently left out of commits unless force-added.
+  it("has no fixture file that git ignores and does not track", () => {
+    const ignored = execFileSync("git", ["ls-files", "--others", "--ignored", "--exclude-standard", "--", "skills/framework-migration/packs"], { encoding: "utf8" })
+      .split("\n")
+      .filter((path) => path.includes("/fixtures/") && !path.includes("/node_modules/"));
+    expect(ignored).toEqual([]);
   });
 });

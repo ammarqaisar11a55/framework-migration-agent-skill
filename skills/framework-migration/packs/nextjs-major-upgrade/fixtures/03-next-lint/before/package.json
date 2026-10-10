@@ -1,0 +1,23 @@
+{
+  "name": "fixture-next-lint",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "next build && node --test test/*.test.mjs && npm run lint"
+  },
+  "dependencies": {
+    "next": "15.5.26",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "3.3.1",
+    "eslint": "9.39.5",
+    "eslint-config-next": "15.5.26"
+  }
+}

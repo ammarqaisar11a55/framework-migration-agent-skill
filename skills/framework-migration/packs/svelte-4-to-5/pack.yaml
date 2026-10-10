@@ -1,0 +1,43 @@
+id: svelte-4-to-5
+title: Svelte 4 → 5 (runes)
+ecosystem: node
+tier: 1
+status: shipped
+
+from: { framework: svelte, versions: "4.x" }
+to:   { framework: svelte, versions: "5.x" }
+
+tools:
+  # The official migration (`npx sv migrate svelte-5` hands over to svelte-migrate@1), run without
+  # its prompts by codemods/official-migrate.mjs; it uses the Svelte 5 compiler's migrate().
+  - { name: svelte-migrate, version: "1.10.3", role: engine }
+  # Exact versions for the caret ranges the migration writes (finish-migration.js), each the newest
+  # release inside that range when the pack was verified. Only packages the project has change.
+  - { name: svelte, version: "5.57.1", role: devDependency }
+  - { name: svelte-check, version: "4.7.6", role: devDependency }
+  - { name: svelte-preprocess, version: "6.0.5", role: devDependency }
+  - { name: "@sveltejs/enhanced-img", version: "0.3.10", role: devDependency }
+  - { name: "@sveltejs/kit", version: "2.70.3", role: devDependency }
+  - { name: "@sveltejs/package", version: "2.5.8", role: devDependency }
+  - { name: "@sveltejs/vite-plugin-svelte", version: "4.0.4", role: devDependency }
+  - { name: svelte-loader, version: "3.2.4", role: devDependency }
+  - { name: rollup-plugin-svelte, version: "7.2.3", role: devDependency }
+  - { name: prettier, version: "3.9.9", role: devDependency }
+  - { name: prettier-plugin-svelte, version: "3.5.2", role: devDependency }
+  - { name: eslint-plugin-svelte, version: "2.46.1", role: devDependency }
+  - { name: svelte-eslint-parser, version: "0.42.0", role: devDependency }
+  - { name: typescript, version: "5.9.3", role: devDependency }
+  - { name: vite, version: "5.4.21", role: devDependency }
+
+stages:
+  - id: svelte-5
+    title: Run the official svelte-5 migration (dependencies, components to runes, mount()), then fix what it leaves
+    commands:
+      - run: "node {pack_dir}/codemods/official-migrate.mjs"
+        dry_run: "node {pack_dir}/codemods/official-migrate.mjs --dry-run"
+    codemods: [finish-migration.js]
+    fix_rules: true
+    post_commands: ["node {pack_dir}/codemods/install-upgraded.mjs"]
+
+checks:
+  test: "npm test"

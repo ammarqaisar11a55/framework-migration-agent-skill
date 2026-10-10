@@ -27,7 +27,7 @@ describe("detectStack", () => {
       }),
     });
     expect(stack).toMatchObject({ ecosystem: "node", language: "javascript", moduleType: "commonjs", runtime: "node >=18" });
-    expect(versions(stack)).toEqual({ express: "^4.18.2", jest: "29.7.0" });
+    expect(versions(stack)).toEqual({ express: "^4.18.2", jest: "29.7.0", node: ">=18" });
   });
 
   it("node: tsconfig.json and type: module", () => {

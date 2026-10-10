@@ -56,4 +56,11 @@ function detect(project: ProjectView): Stack[] {
   return stacks;
 }
 
-export const pythonAdapter: Adapter = { ecosystem: "python", languages: { ".py": "python" }, detect };
+export const pythonAdapter: Adapter = {
+  ecosystem: "python",
+  languages: { ".py": "python" },
+  detect,
+  // A virtualenv per project: `python`, `pip` and the project's tools resolve to it through binDirs.
+  install: "python3 -m venv .venv && .venv/bin/python -m pip install --quiet --disable-pip-version-check -r requirements.txt",
+  binDirs: [".venv/bin"],
+};

@@ -15,6 +15,12 @@ describe("parseTestCounts", () => {
     ["mocha", "  12 passing (40ms)\n  2 failing\n", { passed: 12, failed: 2 }],
     ["pytest", "===== 2 failed, 8 passed, 1 error in 0.52s =====\n", { passed: 8, failed: 3 }],
     ["maven surefire", "Tests run: 3, Failures: 0, Errors: 0, Skipped: 0\nTests run: 10, Failures: 1, Errors: 1, Skipped: 2\n", { passed: 6, failed: 2 }],
+    ["pytest -q", "......                                                  [100%]\n7 passed, 1 warning in 0.10s\n", { passed: 7, failed: 0 }],
+    ["phpunit ok", "..... 5 / 5 (100%)\n\nOK (5 tests, 9 assertions)\n", { passed: 5, failed: 0 }],
+    ["phpunit failures", "Tests: 7, Assertions: 12, Failures: 1, Errors: 1, Skipped: 2.\n", { passed: 3, failed: 2 }],
+    ["unittest ok", "......\n----------------------------------------------------------------------\nRan 6 tests in 0.015s\n\nOK\n", { passed: 6, failed: 0 }],
+    ["unittest failed", "Ran 10 tests in 1.2s\n\nFAILED (failures=1, errors=2, skipped=3)\n", { passed: 4, failed: 3 }],
+    ["unittest skipped", "Ran 1 test in 0.001s\n\nOK (skipped=1)\n", { passed: 0, failed: 0 }],
   ])("%s", (_name, output, expected) => {
     expect(parseTestCounts(output)).toEqual(expected);
   });

@@ -1,0 +1,19 @@
+{
+  "name": "fixture-deprecated-but-working",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --import tsx --test --test-force-exit test/*.test.jsx"
+  },
+  "dependencies": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "prop-types": "15.8.1",
+    "react-test-renderer": "19.3.0"
+  },
+  "devDependencies": {
+    "jsdom": "29.1.1",
+    "tsx": "4.23.15"
+  }
+}

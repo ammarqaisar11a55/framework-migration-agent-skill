@@ -1,0 +1,121 @@
+# eslintrc configuration that flat config (ESLint 9) does not read, and eslintrc-only CLI flags.
+# Sources: references/official-sources.md.
+
+rules:
+  - id: eslintrc-file
+    description: An eslintrc configuration file, which ESLint 9 ignores in favour of eslint.config.*.
+    matcher:
+      type: regex
+      pattern: '^\s*["'']?(extends|env|parserOptions|overrides|ignorePatterns|rules)["'']?\s*:'
+    extensions: [".json", ".yml", ".yaml", ".js", ".cjs"]
+    exclude: ['^(?!(.*/)?\.eslintrc\.(json|ya?ml|c?js)$)']
+    severity: warn
+    auto_fixable: true
+    fix_hint: "Converted by @eslint/migrate-config into eslint.config.mjs; the file is removed."
+    docs_url: https://eslint.org/docs/latest/use/configure/migration-guide
+
+  - id: package-json-config
+    description: An `eslintConfig` key in package.json, which flat config does not read.
+    matcher:
+      type: regex
+      pattern: '^\s*"eslintConfig"\s*:'
+    extensions: [".json"]
+    exclude: ['^(?!package\.json$)']
+    severity: warn
+    auto_fixable: true
+    fix_hint: "Converted into eslint.config.mjs; the key is removed from package.json."
+    docs_url: https://eslint.org/docs/latest/use/configure/migration-guide
+
+  - id: eslint-env-comment
+    description: An `/* eslint-env */` comment, which flat config reports as an error.
+    matcher:
+      type: regex
+      pattern: '/\*\s*eslint-env\s'
+    severity: warn
+    auto_fixable: true
+    fix_hint: "finish-flat-config.js replaces it with a `/* global ... */` comment listing the environment's globals the file uses."
+    docs_url: https://eslint.org/docs/latest/use/configure/migration-guide
+
+  - id: cli-ext
+    description: "`eslint --ext`, which flat config does not support."
+    matcher:
+      type: regex
+      pattern: '"[^"]*\beslint\b[^"]*--ext[ =]'
+    extensions: [".json"]
+    exclude: ['^(?!package\.json$)']
+    severity: warn
+    auto_fixable: true
+    fix_hint: "Removed from the script; extensions other than .js, .mjs and .cjs become `files` entries in eslint.config.mjs."
+    docs_url: https://github.com/eslint/rewrite/tree/main/packages/migrate-config#--ext
+
+  - id: cli-ignore-path
+    description: "`eslint --ignore-path`, which flat config does not support."
+    matcher:
+      type: regex
+      pattern: '"[^"]*\beslint\b[^"]*--ignore-path[ =]'
+    extensions: [".json"]
+    exclude: ['^(?!package\.json$)']
+    severity: warn
+    auto_fixable: true
+    fix_hint: "Removed from the script; `--ignore-path .gitignore` is migrated with the migrator's --gitignore option. Another file must be included in eslint.config.mjs by hand (includeIgnoreFile)."
+    docs_url: https://eslint.org/docs/latest/use/configure/migration-guide
+
+  - id: cli-no-eslintrc
+    description: "`eslint --no-eslintrc`, replaced by `--no-config-lookup`."
+    matcher:
+      type: regex
+      pattern: '"[^"]*\beslint\b[^"]*--no-eslintrc\b'
+    extensions: [".json"]
+    exclude: ['^(?!package\.json$)']
+    severity: warn
+    auto_fixable: true
+    fix_hint: "Replaced with --no-config-lookup."
+    docs_url: https://eslint.org/docs/latest/use/configure/migration-guide
+
+  - id: cli-env
+    description: "`eslint --env`, which flat config does not support."
+    matcher:
+      type: regex
+      pattern: '"[^"]*\beslint\b[^"]*--env[ =]'
+    extensions: [".json"]
+    exclude: ['^(?!package\.json$)']
+    severity: error
+    auto_fixable: false
+    fix_hint: "Remove the flag and add the environment's globals to eslint.config.mjs (languageOptions.globals with the globals package)."
+    docs_url: https://eslint.org/docs/latest/use/configure/migration-guide
+
+  - id: cli-rulesdir
+    description: "`eslint --rulesdir` or `--resolve-plugins-relative-to`, which flat config does not support."
+    matcher:
+      type: regex
+      pattern: '"[^"]*\beslint\b[^"]*--(rulesdir|resolve-plugins-relative-to)[ =]'
+    extensions: [".json"]
+    exclude: ['^(?!package\.json$)']
+    severity: error
+    auto_fixable: false
+    fix_hint: "Load local rules as an inline plugin object in eslint.config.mjs (plugins: { local: { rules: { ... } } }); plugins now resolve from the config file."
+    docs_url: https://eslint.org/docs/latest/use/configure/migration-guide
+
+  - id: js-config-logic
+    description: A JavaScript eslintrc file with logic; the migrator keeps only its evaluated result, so official-migrate.mjs stops.
+    matcher:
+      type: regex
+      pattern: '\brequire\s*\(|\bprocess\.env\b|=>|\bfunction\b|\.\.\.'
+    extensions: [".js", ".cjs"]
+    exclude: ['^(?!(.*/)?\.eslintrc\.c?js$)']
+    severity: error
+    auto_fixable: false
+    fix_hint: "Write eslint.config.mjs by hand, keeping the logic, or reduce the file to literal data and run the stage again."
+    docs_url: https://eslint.org/docs/latest/use/configure/migration-guide
+
+  - id: compat-bridge
+    description: A plugin or shareable config loaded through FlatCompat (the eslintrc compatibility layer).
+    matcher:
+      type: regex
+      pattern: '\bcompat\.(plugins|env|config)\(|\bcompat\.extends\([^)]*["''](?!eslint:(recommended|all)["''])[^"'']+["'']'
+    extensions: [".mjs", ".js", ".cjs"]
+    exclude: ['^(?!eslint\.config\.[cm]?js$)']
+    severity: info
+    auto_fixable: false
+    fix_hint: "Works as it is. When the plugin or config ships a flat config, import it directly and drop FlatCompat (and @eslint/eslintrc)."
+    docs_url: https://eslint.org/docs/latest/use/configure/migration-guide

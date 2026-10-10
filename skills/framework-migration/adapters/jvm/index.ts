@@ -77,4 +77,10 @@ function detect(project: ProjectView): Stack[] {
   return stacks;
 }
 
-export const jvmAdapter: Adapter = { ecosystem: "jvm", languages: { ".java": "java", ".kt": "kotlin", ".jsp": "jsp" }, detect };
+export const jvmAdapter: Adapter = {
+  ecosystem: "jvm",
+  languages: { ".java": "java", ".kt": "kotlin", ".jsp": "jsp" },
+  detect,
+  // Maven and Gradle resolve dependencies when the checks build the project: nothing to install first.
+  install: "true",
+};

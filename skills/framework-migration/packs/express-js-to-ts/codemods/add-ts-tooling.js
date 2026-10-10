@@ -38,6 +38,33 @@ function retarget(script, roots) {
   return script.replace(pattern, (_match, lead, path) => `${lead}${OUT_DIR}/${path}`);
 }
 
+/** Test runner configuration files: when one exists, the runner's file selection is the project's own. */
+const RUNNER_CONFIG = {
+  jest: ["js", "cjs", "mjs", "ts", "cts", "mts", "json"].map((ext) => `jest.config.${ext}`),
+  mocha: [".mocharc", ".mocharc.js", ".mocharc.cjs", ".mocharc.mjs", ".mocharc.json", ".mocharc.jsonc", ".mocharc.yml", ".mocharc.yaml"],
+};
+const FLAGS_ONLY = /^(?:\s+--?[\w-]+(?:=[^\s'"]+)?)*$/;
+const RUNNER_TYPES = { jest: "@types/jest", mocha: "@types/mocha" };
+
+/**
+ * A bare `jest` / `mocha` (flags only, no runner config) cannot run TypeScript test files without
+ * extra configuration (a transformer for jest, a loader for mocha). Point it at the build output
+ * instead, where the compiled tests are, as the pack does for every other script.
+ */
+function retargetRunner(script, pkg, roots, options) {
+  const match = /^(jest|mocha)(.*)$/.exec(script.trim());
+  if (match === null || !FLAGS_ONLY.test(match[2])) return script;
+  const runner = match[1];
+  const configured = pkg[runner] !== undefined || RUNNER_CONFIG[runner].some((path) => options.read(path) !== undefined);
+  if (configured) return script;
+  if (runner === "mocha" && !roots.includes("test")) return script;
+  options.note(
+    `the "test" script now runs ${runner} on the build output (${OUT_DIR}/). Its globals (describe, it, ...) need types: add ${RUNNER_TYPES[runner]} at the major version matching the installed ${runner}, and add "${runner}" to compilerOptions.types in tsconfig.json`,
+  );
+  const target = runner === "jest" ? ` --roots ${OUT_DIR}` : ` ${OUT_DIR}/test`;
+  return `${runner}${target}${match[2]}`;
+}
+
 export default function transform(file, _api, options) {
   if (file.path === ".gitignore") {
     const lines = file.source.split(/\r?\n/).map((line) => line.trim());
@@ -62,12 +89,14 @@ export default function transform(file, _api, options) {
 
   const scripts = { ...pkg.scripts };
   for (const [name, script] of Object.entries(scripts)) {
-    const retargeted = retarget(script, roots);
+    let retargeted = retarget(script, roots);
+    if (retargeted === script && (name === "test" || name.startsWith("test:"))) retargeted = retargetRunner(script, pkg, roots, options);
     if (retargeted === script) {
       if (name === "test") options.note(`the "test" script (${script}) names no source file, so it was not changed: make sure the test runner picks up TypeScript tests`);
       continue;
     }
     const isTest = name === "test" || name.startsWith("test:");
+    if (!isTest && name !== "start") options.note(`the "${name}" script now runs the build output (${OUT_DIR}/), so it runs whatever was last built: run \`npm run build\` (or \`tsc --watch\`) alongside it`);
     scripts[name] = isTest && !/\b(tsc|npm run build)\b/.test(retargeted) ? `npm run build && ${retargeted}` : retargeted;
   }
   scripts.build ??= "tsc";

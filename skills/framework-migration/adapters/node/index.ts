@@ -64,6 +64,8 @@ function detect(project: ProjectView): Stack[] {
     const framework = FRAMEWORKS[name];
     if (framework !== undefined) frameworks.push({ name: framework, version });
   }
+  // The runtime itself, for packs that migrate a Node project rather than a framework (CommonJS → ESM).
+  frameworks.push({ name: "node", version: pkg.engines?.node ?? "*" });
   frameworks.sort((a, b) => a.name.localeCompare(b.name));
   const hasTsconfig = rootFiles(project, (f) => f === "tsconfig.json").length > 0;
   const stack: Stack = {

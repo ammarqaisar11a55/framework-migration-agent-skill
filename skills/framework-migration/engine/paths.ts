@@ -20,12 +20,15 @@ export function skillDir(): string {
 }
 
 export const schemasDir = (): string => join(skillDir(), "schemas");
+/** The package root (package.json): two levels above the skill directory. */
+export const packageRoot = (): string => join(skillDir(), "..", "..");
 export const packsDir = (): string => join(skillDir(), "packs");
 
 /** Directories never scanned in a target project. */
 export const IGNORED_DIRS = new Set([
-  "node_modules", ".git", ".fm", "dist", "build", "built", "out", "coverage", "vendor", "target", "bin", "obj",
-  ".venv", "venv", "__pycache__", ".dart_tool", ".gradle", ".next", ".nuxt", ".svelte-kit",
+  // Not "bin": Node packages keep CLI sources there. .NET build output in bin/ holds no source files.
+  "node_modules", ".git", ".fm", "dist", "build", "built", "out", "coverage", "vendor", "target", "obj",
+  ".venv", "venv", "__pycache__", ".pytest_cache", ".mypy_cache", ".tox", ".dart_tool", ".gradle", ".next", ".nuxt", ".svelte-kit", ".angular", ".phpunit.cache",
 ]);
 
 /** Project-relative, forward-slash paths of every file under root, sorted. */
