@@ -1,0 +1,148 @@
+# Angular 20 constructs that 21 and 22 remove or change. Source: the update guide's v21 and v22 steps
+# (references/official-sources.md). Templates are matched in .html files and in inline templates in
+# .ts files.
+
+rules:
+  - id: structural-directives
+    description: "*ngIf / *ngFor / *ngSwitchCase and [ngSwitch]; the 21 update converts them to built-in control flow (@if, @for, @switch)."
+    matcher:
+      type: regex
+      pattern: '\*ng(If|For|SwitchCase|SwitchDefault)\b|\[ngSwitch\]'
+    extensions: [".ts", ".html"]
+    severity: info
+    auto_fixable: true
+    fix_hint: "Converted by control-flow-migration during ng update to 21; the NgIf/NgFor/NgSwitch imports are removed."
+    docs_url: https://angular.dev/update-guide
+
+  - id: optional-chaining-null-check
+    description: "A template comparing an optional chain with null. In Angular 22, a?.b returns undefined instead of null when a is nullish."
+    matcher:
+      type: regex
+      pattern: '\?\.[\w.?]*\s*(===|!==)\s*null\b|\bnull\s*(===|!==)\s*[\w.]+\?\.'
+    extensions: [".ts", ".html"]
+    severity: warn
+    auto_fixable: true
+    fix_hint: "Wrapped in $safeNavigationMigration(...) by the 22 update, which keeps the null result. Rewrite the check (== null, or a plain truthiness test) and drop the wrapper when convenient."
+    docs_url: https://angular.dev/update-guide
+
+  - id: router-get-current-navigation
+    description: "Router.getCurrentNavigation(), deprecated in 21 for the currentNavigation signal."
+    matcher:
+      type: regex
+      pattern: '\.getCurrentNavigation\(\)'
+    extensions: [".ts"]
+    severity: warn
+    auto_fixable: false
+    fix_hint: "Optional migration, not run by ng update: `ng update @angular/core --name router-current-navigation`, or call router.currentNavigation() by hand."
+    docs_url: https://angular.dev/update-guide
+
+  - id: application-config-platform-browser
+    description: "ApplicationConfig imported from @angular/platform-browser, removed in 21."
+    matcher:
+      type: regex
+      pattern: '\bApplicationConfig\b[^;]*from\s+["'']@angular/platform-browser["'']'
+    extensions: [".ts"]
+    severity: error
+    auto_fixable: true
+    fix_hint: "Moved to @angular/core by application-config-core during ng update to 21."
+    docs_url: https://angular.dev/update-guide
+
+  - id: component-removed-options
+    description: "moduleId or interpolation in a @Component decorator, removed in 21."
+    matcher:
+      type: regex
+      pattern: '^\s*(moduleId|interpolation)\s*:'
+    extensions: [".ts"]
+    severity: error
+    auto_fixable: false
+    fix_hint: "Delete moduleId (the build resolves relative URLs). For interpolation, rewrite the templates to the default {{ }} markers."
+    docs_url: https://angular.dev/update-guide
+
+  - id: removed-factories
+    description: "NgModuleFactory (removed in 21), ComponentFactoryResolver / ComponentFactory and createNgModuleRef (removed in 22)."
+    matcher:
+      type: regex
+      pattern: '\b(NgModuleFactory|ComponentFactoryResolver|ComponentFactory|createNgModuleRef)\b'
+    extensions: [".ts"]
+    severity: error
+    auto_fixable: false
+    fix_hint: "Pass the component class to ViewContainerRef.createComponent() or createComponent(); use createNgModule() for modules."
+    docs_url: https://angular.dev/update-guide
+
+  - id: provide-routes
+    description: "provideRoutes(), removed in 22."
+    matcher:
+      type: regex
+      pattern: '\bprovideRoutes\('
+    extensions: [".ts"]
+    severity: error
+    auto_fixable: false
+    fix_hint: "Use provideRouter(routes), or provide the routes with the ROUTES multi token."
+    docs_url: https://angular.dev/update-guide
+
+  - id: hammerjs
+    description: "Hammer.js integration (HammerModule, HAMMER_GESTURE_CONFIG), removed from platform-browser in 22."
+    matcher:
+      type: regex
+      pattern: '\b(HammerModule|HammerGestureConfig|HAMMER_GESTURE_CONFIG|HAMMER_LOADER)\b'
+    extensions: [".ts"]
+    severity: error
+    auto_fixable: false
+    fix_hint: "Implement the gestures with pointer events or a gesture library."
+    docs_url: https://angular.dev/update-guide
+
+  - id: full-template-type-check
+    description: "The fullTemplateTypeCheck compiler option, removed in 22."
+    matcher:
+      type: regex
+      pattern: '"fullTemplateTypeCheck"\s*:'
+    extensions: [".json"]
+    severity: error
+    auto_fixable: false
+    fix_hint: "Remove it; set strictTemplates instead (22 enables it by default; the update writes strictTemplates: false where it was not set)."
+    docs_url: https://angular.dev/update-guide
+
+  - id: router-params-inheritance
+    description: "Router configuration. In 22, paramsInheritanceStrategy defaults to 'always' (was 'emptyOnly'), and no migration sets it."
+    matcher:
+      type: regex
+      pattern: '\bprovideRouter\(|\bRouterModule\.forRoot\('
+    extensions: [".ts"]
+    exclude: ['\.spec\.ts$']
+    severity: info
+    auto_fixable: false
+    fix_hint: "Child routes now see every parent's params. If a route reads a parameter name a parent also defines, or relies on not seeing parent params, pass withRouterConfig({ paramsInheritanceStrategy: 'emptyOnly' })."
+    docs_url: https://angular.dev/update-guide
+
+  - id: webpack-builders
+    description: "@angular-devkit/build-angular builders (browser, karma with webpack), deprecated in 22."
+    matcher:
+      type: regex
+      pattern: '"@angular-devkit/build-angular:(browser|browser-esbuild|dev-server|karma|server|ssr-dev-server|prerender)"'
+    extensions: [".json"]
+    severity: warn
+    auto_fixable: false
+    fix_hint: "Optional migrations, not run by ng update: `ng update @angular/cli --name use-application-builder` (and --name migrate-karma-to-vitest for tests)."
+    docs_url: https://angular.dev/update-guide
+
+  - id: experimental-test-builders
+    description: "The experimental jest and web-test-runner builders, removed in 22."
+    matcher:
+      type: regex
+      pattern: '"@angular-devkit/build-angular:(jest|web-test-runner)"'
+    extensions: [".json"]
+    severity: error
+    auto_fixable: false
+    fix_hint: "Move the tests to the unit-test builder (@angular/build:unit-test with Vitest) or run Jest directly."
+    docs_url: https://angular.dev/update-guide
+
+  - id: default-change-detection
+    description: "A @Component without changeDetection. Angular 22 makes OnPush the default (it was Eager); the 22 update sets Eager on such components."
+    matcher:
+      type: ast
+      selector: 'Decorator > CallExpression[callee.name="Component"] > ObjectExpression:not(:has(> Property[key.name="changeDetection"]))'
+    extensions: [".ts"]
+    severity: warn
+    auto_fixable: true
+    fix_hint: "changeDetection: ChangeDetectionStrategy.Eager is added by the change-detection-eager migration, which keeps the old behaviour. Moving a component to OnPush (signals, markForCheck, immutable inputs) is a later, per-component change."
+    docs_url: https://angular.dev/update-guide

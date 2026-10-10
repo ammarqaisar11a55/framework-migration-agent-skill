@@ -426,3 +426,32 @@ auto-fixable.
 Each fixture's test script builds the app and runs `node --test` against `next start` on a free port,
 fetching pages, redirects, headers and route handlers. The same tests run on 15 and 16. The evals
 compare after/ without build output (`.next/` and the engine's other ignored directories).
+
+## M9 — `angular-major-upgrade`
+
+### D54. One stage per major, each `ng update` on a scratch copy at a pinned CLI
+The update guide goes one major at a time with `ng update @angular/core@N @angular/cli@N`. The pack
+has a stage per major (20 → 21 → 22); a stage whose major the project already has does nothing, so a
+project can enter at either. ng update installs packages, runs the migrations, and refuses a dirty
+repository, so `ng-update.mjs` runs it in a committed scratch copy with its own install and copies
+the diff back. The CLI runs at the pinned version with `NG_DISABLE_VERSION_CHECK` (otherwise it
+fetches the newest CLI of the major). Optional migrations are not run; rules report them.
+
+### D55. vitest and TypeScript are passed at pinned versions only when the peer range demands it
+ng update upgrades any package whose peer range the target excludes, at the newest matching version.
+For vitest that is 4.1, which npm 10 cannot install with Angular 21 (an arborist crash on vite 8's
+`@vitejs/devtools` peer set, reproducible with a fresh `ng new`). The runner passes `vitest@4.0.18`
+and `typescript@6.0.3` explicitly when the installed versions fall outside @angular/build's peer
+ranges, so the result is reproducible and installs with npm 10.
+
+### D56. The NG4003 conflict between two 22.2 migrations is repaired
+For projects without `strictTemplates`, `strict-templates-default` writes `strictTemplates: false` and
+`strict-safe-navigation-narrow` writes an `extendedDiagnostics` block; the compiler rejects the pair.
+`finish-update.js` removes the block where strictTemplates is false (extended diagnostics need strict
+templates, so it had no effect).
+
+### D57. Angular fixtures use the Vitest unit-test builder; Angular 22 needs Node.js 22.22.3+
+The fixtures run TestBed specs with `@angular/build:unit-test` (Vitest, jsdom), the builder new
+projects use from 21, and `ng build` as the type check. Angular 22 requires Node.js
+`^22.22.3 || ^24.15.0 || >=26`; the runner stops on older versions. CI's evals job uses the latest
+Node.js 22, which satisfies it; the fixtures were verified locally with Node.js 22.23.3.

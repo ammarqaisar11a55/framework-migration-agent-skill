@@ -6,6 +6,7 @@ without a smoke probe either, that the test run loaded the migrated modules.
 
 | Pack | Fixtures | Compile pass % | Test parity % | Finding precision | Finding recall | Manual items |
 |---|---|---|---|---|---|---|
+| `angular-major-upgrade` | 4 | 100% | 100% | 100% | 100% | 2 |
 | `eslint-flat-config` | 4 | 100% | 100% | 100% | 100% | 0 |
 | `express-4-to-5` | 5 | 100% | 100% | 100% | 100% | 5 |
 | `express-js-to-ts` | 5 | 100% | 100% | 100% | 100% | 5 |
@@ -14,6 +15,15 @@ without a smoke probe either, that the test run loaded the migrated modules.
 | `react-major-upgrade` | 4 | 100% | 100% | 100% | 100% | 7 |
 | `svelte-4-to-5` | 4 | 100% | 100% | 100% | 100% | 4 |
 | `tailwind-3-to-4` | 4 | 100% | 100% | 100% | 100% | 6 |
+
+## angular-major-upgrade
+
+| Fixture | Kind | Compiles | Tests (after/baseline) | Findings TP / FP / FN | Negative patterns kept | Matches after/ | Manual items |
+|---|---|---|---|---|---|---|---|
+| 01-control-flow | positive | yes | 3/3 yes | 8 / 0 / 0 | — | yes | 0 |
+| 02-default-change-detection | positive | yes | 1/1 yes | 2 / 0 / 0 | — | yes | 0 |
+| 03-template-semantics | positive | yes | 4/4 yes | 3 / 0 / 0 | — | yes | 0 |
+| 04-router-navigation-state | negative | yes | 2/2 yes | 2 / 0 / 0 | yes | yes | 2 |
 
 ## eslint-flat-config
 
