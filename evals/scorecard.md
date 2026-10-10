@@ -11,6 +11,7 @@ without a smoke probe either, that the test run loaded the migrated modules.
 | `express-js-to-ts` | 5 | 100% | 100% | 100% | 100% | 5 |
 | `node-cjs-to-esm` | 4 | 100% | 100% | 100% | 100% | 7 |
 | `react-major-upgrade` | 4 | 100% | 100% | 100% | 100% | 7 |
+| `svelte-4-to-5` | 4 | 100% | 100% | 100% | 100% | 4 |
 | `tailwind-3-to-4` | 4 | 100% | 100% | 100% | 100% | 6 |
 
 ## eslint-flat-config
@@ -59,6 +60,15 @@ without a smoke probe either, that the test run loaded the migrated modules.
 | 02-string-refs | positive | yes | 1/1 yes | 3 / 0 / 0 | — | yes | 0 |
 | 03-function-defaults | positive | yes | 3/3 yes | 4 / 0 / 0 | — | yes | 4 |
 | 04-deprecated-but-working | negative | yes | 1/1 yes | 3 / 0 / 0 | yes | yes | 3 |
+
+## svelte-4-to-5
+
+| Fixture | Kind | Compiles | Tests (after/baseline) | Findings TP / FP / FN | Negative patterns kept | Matches after/ | Manual items |
+|---|---|---|---|---|---|---|---|
+| 01-runes-counter | positive | yes | 2/2 yes | 3 / 0 / 0 | — | yes | 1 |
+| 02-legacy-stopgaps | positive | yes | 4/4 yes | 4 / 0 / 0 | — | yes | 1 |
+| 03-component-library | positive | yes | 1/1 yes | 2 / 0 / 0 | — | yes | 0 |
+| 04-before-update | negative | yes | 1/1 yes | 2 / 0 / 0 | yes | yes | 2 |
 
 ## tailwind-3-to-4
 

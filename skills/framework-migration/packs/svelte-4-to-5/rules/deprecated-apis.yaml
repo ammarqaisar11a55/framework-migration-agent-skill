@@ -1,0 +1,148 @@
+# Svelte 4 constructs that Svelte 5 removes, deprecates, or that the official migration cannot
+# convert. Source: the Svelte 5 migration guide and breaking changes (references/official-sources.md).
+# Syntax the migration converts reliably (export let, $: x = ..., <slot>, on:event on elements) is not
+# a rule: every component has it, and the stage diff shows each change.
+
+rules:
+  - id: before-after-update
+    description: beforeUpdate / afterUpdate. The migration does not convert a component that uses them; it adds an @migration-task comment and leaves the file in Svelte 4 syntax.
+    matcher:
+      type: regex
+      pattern: '\b(beforeUpdate|afterUpdate)\s*\('
+    extensions: [".svelte"]
+    severity: warn
+    auto_fixable: false
+    fix_hint: "The component keeps working in legacy mode. To move it to runes, replace beforeUpdate with $effect.pre and afterUpdate with $effect, reading the state the callback depends on inside it, then run `npx sv migrate svelte-5` on the file again."
+    docs_url: https://svelte.dev/docs/svelte/v5-migration-guide
+
+  - id: migration-task
+    description: An @migration-task comment the migration left where it could not convert the code.
+    matcher:
+      type: regex
+      pattern: '@migration-task'
+    extensions: [".svelte"]
+    severity: error
+    auto_fixable: false
+    fix_hint: "Read the comment, migrate that part by hand, and delete the comment."
+    docs_url: https://svelte.dev/docs/svelte/v5-migration-guide
+
+  - id: create-event-dispatcher
+    description: createEventDispatcher, deprecated in Svelte 5 in favour of callback props. The migration keeps it; it still works.
+    matcher:
+      type: regex
+      pattern: '\bcreateEventDispatcher\s*\('
+    extensions: [".svelte", ".js", ".ts"]
+    severity: info
+    auto_fixable: false
+    fix_hint: "Optional: replace dispatch('name', detail) with a callback prop (onname) and update the parents' on:name handlers; the handler then receives the detail itself, not an event."
+    docs_url: https://svelte.dev/docs/svelte/v5-migration-guide
+
+  - id: reactive-side-effect
+    description: "A $: statement that runs code instead of assigning a value. The migration wraps it in run() from svelte/legacy, a stop-gap that runs before the DOM updates."
+    matcher:
+      type: regex
+      pattern: '^\s*\$:\s*(\{|if\b|for\b|[\w$.]+\s*\()'
+    extensions: [".svelte"]
+    severity: warn
+    auto_fixable: false
+    fix_hint: "After the migration, replace run(() => ...) with $derived for a computed value or $effect for a side effect (effects run after the DOM update, and not during server rendering)."
+    docs_url: https://svelte.dev/docs/svelte/v5-migration-guide
+
+  - id: event-modifiers
+    description: Event modifiers (on:click|preventDefault). Svelte 5 event attributes have none; the migration wraps the handler in legacy helpers.
+    matcher:
+      type: regex
+      pattern: '\bon:\w+(\|\w+)+'
+    extensions: [".svelte"]
+    severity: info
+    auto_fixable: true
+    fix_hint: "Converted to onclick={preventDefault(handler)} with helpers from svelte/legacy; call event.preventDefault() in the handler to drop them."
+    docs_url: https://svelte.dev/docs/svelte/v5-migration-guide
+
+  - id: event-forwarding
+    description: Event forwarding (on:click with no handler). The migration replaces it with createBubbler() from svelte/legacy.
+    matcher:
+      type: regex
+      pattern: '\bon:\w+(?=[\s/>])'
+    extensions: [".svelte"]
+    severity: info
+    auto_fixable: true
+    fix_hint: "Converted to onclick={bubble('click')}; a callback prop (onclick) passed through with the rest props replaces it."
+    docs_url: https://svelte.dev/docs/svelte/v5-migration-guide
+
+  - id: dollar-props
+    description: "$$props / $$restProps. The migration turns them into rest props from $props()."
+    matcher:
+      type: regex
+      pattern: '\$\$(props|restProps)\b'
+    extensions: [".svelte"]
+    severity: warn
+    auto_fixable: true
+    fix_hint: "Converted by the migration. With $$props, check in the diff that every reference to a prop became props.<name>: svelte 5.57 leaves the expression of <svelte:component this={...}> unchanged, so it reads an undefined variable."
+    docs_url: https://svelte.dev/docs/svelte/v5-migration-guide
+
+  - id: component-instantiation
+    description: new Component({ target }). Svelte 5 components are functions; mount() or hydrate() creates them.
+    matcher:
+      type: regex
+      pattern: '\bnew\s+[A-Z][\w$]*\s*\(\s*\{[^}]*\btarget\s*:'
+    extensions: [".js", ".ts", ".svelte"]
+    severity: error
+    auto_fixable: true
+    fix_hint: "Rewritten to mount(Component, { target }) (hydrate() with hydrate: true) by the migration when Component is the default import of a .svelte file; otherwise rewrite it by hand."
+    docs_url: https://svelte.dev/docs/svelte/v5-migration-guide
+
+  - id: component-instance-methods
+    description: "$on / $set on a component instance, which Svelte 5 removes."
+    matcher:
+      type: regex
+      pattern: '\.\$(on|set)\s*\('
+    extensions: [".js", ".ts", ".svelte"]
+    severity: error
+    auto_fixable: false
+    fix_hint: "Pass handlers as callback props or in mount(Component, { events }); replace $set with a $state object passed as props."
+    docs_url: https://svelte.dev/docs/svelte/v5-migration-guide
+
+  - id: component-destroy
+    description: "$destroy() on a component instance, removed in Svelte 5."
+    matcher:
+      type: regex
+      pattern: '\.\$destroy\s*\('
+    extensions: [".js", ".ts", ".svelte"]
+    severity: error
+    auto_fixable: true
+    fix_hint: "Rewritten to unmount(instance) by the migration when the instance comes from new Component() in the same file; otherwise use unmount() from svelte by hand."
+    docs_url: https://svelte.dev/docs/svelte/v5-migration-guide
+
+  - id: options-accessors
+    description: "<svelte:options accessors>, which runes mode ignores; component exports replace it."
+    matcher:
+      type: regex
+      pattern: '<svelte:options\b[^>]*\baccessors\b'
+    extensions: [".svelte"]
+    severity: warn
+    auto_fixable: true
+    fix_hint: "The migration exports the props instead (export { value }); finish-migration.js removes what it leaves of the option."
+    docs_url: https://svelte.dev/docs/svelte/v5-migration-guide
+
+  - id: options-immutable
+    description: "<svelte:options immutable>, which has no effect in runes mode."
+    matcher:
+      type: regex
+      pattern: '<svelte:options\b[^>]*\bimmutable\b'
+    extensions: [".svelte"]
+    severity: info
+    auto_fixable: false
+    fix_hint: "Remove it once the component uses runes; the compiler warns about it until then."
+    docs_url: https://svelte.dev/docs/svelte/v5-migration-guide
+
+  - id: eslint-plugin-svelte3
+    description: eslint-plugin-svelte3, deprecated and without Svelte 5 support.
+    matcher:
+      type: regex
+      pattern: '"eslint-plugin-svelte3"\s*:'
+    extensions: [".json"]
+    severity: warn
+    auto_fixable: false
+    fix_hint: "Replace it with eslint-plugin-svelte and its configuration."
+    docs_url: https://svelte.dev/docs/svelte/v4-migration-guide

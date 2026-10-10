@@ -358,3 +358,34 @@ The tool renames `shadow-sm`, `rounded`, `outline-none` and the rest from its ow
 regex rule would also flag the v4 names after the upgrade (`shadow-sm` exists in both with
 different meanings). The rules cover what the tool reports but does not change: JS config with
 plugins, `theme()` calls, `@layer` utilities and removed config options.
+
+## M9 — `svelte-4-to-5`
+
+### D45. The official migration runs without its prompts, through its own functions
+`npx sv migrate svelte-5` hands over to `svelte-migrate@1`, whose svelte-5 migration asks for
+confirmation, folders and whether to convert components, interactively only. `official-migrate.mjs`
+installs `svelte-migrate` 1.10.3 and the Svelte 5 compiler in a cache directory and calls the same
+functions the migration calls (`update_pkg_json_content`, `transform_module_code`, the compiler's
+`migrate`), with the migration's default answers, on a scratch copy with a diff. It stops on Svelte 3
+or SvelteKit 1 like the official script.
+
+### D46. The migration's caret ranges are pinned; its markup slips are repaired
+`finish-migration.js` replaces each range the migration wrote with an exact version from pack.yaml
+(the newest release inside that range when verified, so the majors stay the migration's choice). It
+also removes the `={true}` that svelte 5.57's `migrate()` leaves when it strips `accessors` from
+`<svelte:options>` (the file does not compile otherwise) and the double spaces left where moved
+attributes were.
+
+### D47. Dependencies are installed by a script that re-resolves only what the upgrade invalidates
+On a project with Svelte 4 installed, `npm install` fails with ERESOLVE: the lockfile keeps
+`@sveltejs/vite-plugin-svelte-inspector` 2.x, whose peer range needs plugin 3. The migration suggests
+`--force`, which installs broken peers. `install-upgraded.mjs` runs `npm install` and, only if it
+fails, drops from the lockfile and node_modules the packages whose installed version no longer
+satisfies package.json plus everything that depends on them, then installs again. Remaining
+conflicts still fail the stage.
+
+### D48. Svelte fixtures compile components with a Node load hook and run under jsdom
+The fixture tests import `.svelte` files through a module hook that compiles them with whichever
+Svelte is installed (`dom` output on 4, `client` on 5), run with `--conditions=browser` and a jsdom
+global DOM, and mount through a helper that uses `new Component()` or `mount()`. The same tests
+therefore run unchanged before and after the migration and check behaviour, not syntax.
